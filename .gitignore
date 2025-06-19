@@ -1,0 +1,13 @@
+client/node_modules/
+client/target/
+client/.env
+client/.env.local
+client/.env.*.local
+client/dist/
+client/build/
+client/.next/
+
+contracts/target/
+contracts/Scarb.lock
+contracts/*.sierra.json
+contracts/*.casm.json
