@@ -1,102 +1,234 @@
-use starknet::{ContractAddress};
+use starknet::{ContractAddress, contract_address_const};
+pub fn ZERO_ADDRESS() -> ContractAddress {
+    contract_address_const::<0x0>()
+}
+// Constants
+pub const MAX_REROLL_ATTEMPTS: u32 = 100; // Safety limit to prevent infinite loops
 
-#[derive(Copy, Drop, Serde, Debug)]
-#[dojo::model]
-pub struct Moves {
-    #[key]
-    pub player: ContractAddress,
-    pub remaining: u8,
-    pub last_direction: Option<Direction>,
-    pub can_move: bool,
+// Enums for Chess pieces and game states
+#[derive(Serde, Copy, Drop, Introspect, PartialEq)]
+pub enum PieceType {
+    Pawn,
+    Bishop,
+    Knight,
+    Rook,
+    Queen,
+    King,
 }
 
-#[derive(Drop, Serde, Debug)]
-#[dojo::model]
-pub struct DirectionsAvailable {
-    #[key]
-    pub player: ContractAddress,
-    pub directions: Array<Direction>,
+#[derive(Serde, Copy, Drop, Introspect, PartialEq)]
+pub enum Color {
+    White,
+    Black,
 }
 
-#[derive(Copy, Drop, Serde, Debug)]
-#[dojo::model]
-pub struct Position {
-    #[key]
-    pub player: ContractAddress,
-    pub vec: Vec2,
+// Game status enum - represents all possible game end states
+#[derive(Serde, Copy, Drop, Introspect, PartialEq)]
+pub enum GameStatus {
+    Active,
+    Checkmate,
+    Stalemate,
+    Draw,
+    WhiteResigned,
+    BlackResigned,
+    Abandoned,
 }
 
-#[derive(Copy, Drop, Serde, Debug)]
-#[dojo::model]
-pub struct PositionCount {
-    #[key]
-    pub identity: ContractAddress,
-    pub position: Span<(u8, u128)>,
+// Board position struct - represents a square on the chess board
+#[derive(Copy, Drop, Serde, Introspect, PartialEq)]
+pub struct BoardPos {
+    pub file: u8,
+    pub rank: u8,
 }
 
-
-#[derive(Serde, Copy, Drop, Introspect, PartialEq, Debug)]
-pub enum Direction {
-    Left,
-    Right,
-    Up,
-    Down,
-}
-
-
-#[derive(Copy, Drop, Serde, IntrospectPacked, Debug)]
-pub struct Vec2 {
-    pub x: u32,
-    pub y: u32,
-}
-
-
-impl DirectionIntoFelt252 of Into<Direction, felt252> {
-    fn into(self: Direction) -> felt252 {
+// Implement Into<felt252> for PieceType to enable felt252 conversion
+impl PieceTypeIntoFelt252 of Into<PieceType, felt252> {
+    fn into(self: PieceType) -> felt252 {
         match self {
-            Direction::Left => 1,
-            Direction::Right => 2,
-            Direction::Up => 3,
-            Direction::Down => 4,
+            PieceType::Pawn => 0,
+            PieceType::Bishop => 1,
+            PieceType::Knight => 2,
+            PieceType::Rook => 3,
+            PieceType::Queen => 4,
+            PieceType::King => 5,
         }
     }
 }
 
-impl OptionDirectionIntoFelt252 of Into<Option<Direction>, felt252> {
-    fn into(self: Option<Direction>) -> felt252 {
+// Implement Into<felt252> for Color
+impl ColorIntoFelt252 of Into<Color, felt252> {
+    fn into(self: Color) -> felt252 {
         match self {
-            Option::None => 0,
-            Option::Some(d) => d.into(),
+            Color::White => 0,
+            Color::Black => 1,
         }
     }
 }
 
-#[generate_trait]
-impl Vec2Impl of Vec2Trait {
-    fn is_zero(self: Vec2) -> bool {
-        if self.x - self.y == 0 {
-            return true;
+// Implement Into<felt252> for GameStatus
+impl GameStatusIntoFelt252 of Into<GameStatus, felt252> {
+    fn into(self: GameStatus) -> felt252 {
+        match self {
+            GameStatus::Active => 0,
+            GameStatus::Checkmate => 1,
+            GameStatus::Stalemate => 2,
+            GameStatus::Draw => 3,
+            GameStatus::WhiteResigned => 4,
+            GameStatus::BlackResigned => 5,
+            GameStatus::Abandoned => 6,
         }
-        false
-    }
-
-    fn is_equal(self: Vec2, b: Vec2) -> bool {
-        self.x == b.x && self.y == b.y
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{Vec2, Vec2Trait};
+// Simplified Game model - removed time control complexity
+#[derive(Copy, Drop, Serde)]
+#[dojo::model]
+pub struct Game {
+    #[key]
+    pub game_id: u32,
+    pub white_player: ContractAddress,
+    pub black_player: ContractAddress,
+    pub current_player: ContractAddress,
+    pub turn_number: u32,
+    pub game_status: GameStatus,
+    pub created_timestamp: u64,
+}
 
-    #[test]
-    fn test_vec_is_zero() {
-        assert(Vec2Trait::is_zero(Vec2 { x: 0, y: 0 }), 'not zero');
+// Simple matchmaking queue entry - only tracks who's waiting
+#[derive(Copy, Drop, Serde)]
+#[dojo::model]
+pub struct MatchmakingEntry {
+    #[key]
+    pub player: ContractAddress,
+    pub joined_timestamp: u64,
+    pub is_active: bool,
+}
+
+// Global queue state to track the first person in queue
+#[derive(Copy, Drop, Serde)]
+#[dojo::model]
+pub struct MatchmakingQueue {
+    #[key]
+    pub queue_id: u32, // Will always be 1, but needed for model key
+    pub first_player: ContractAddress,
+    pub last_updated: u64,
+}
+
+// Player profile model - tracks player statistics
+#[derive(Copy, Drop, Serde)]
+#[dojo::model]
+pub struct PlayerProfile {
+    #[key]
+    pub player: ContractAddress,
+    pub rating: u32,
+    pub games_played: u32,
+    pub games_won: u32,
+    pub games_drawn: u32,
+    pub games_lost: u32,
+    pub total_play_time: u64,
+}
+
+// Dice state model - tracks the current dice roll for a turn
+#[derive(Copy, Drop, Serde)]
+#[dojo::model]
+pub struct DiceState {
+    #[key]
+    pub game_id: u32,
+    #[key]
+    pub turn_number: u32,
+    pub dice1: PieceType,
+    pub dice2: PieceType,
+    pub dice3: PieceType,
+    pub rolled_by: ContractAddress,
+    pub rolled_timestamp: u64,
+    pub roll_count: u32,
+}
+
+// Player move capability model - tracks if player has any possible moves
+#[derive(Copy, Drop, Serde)]
+#[dojo::model]
+pub struct PlayerMoveCapability {
+    #[key]
+    pub game_id: u32,
+    #[key]
+    pub player: ContractAddress,
+    pub can_move_pawn: bool,
+    pub can_move_bishop: bool,
+    pub can_move_knight: bool,
+    pub can_move_rook: bool,
+    pub can_move_queen: bool,
+    pub can_move_king: bool,
+    pub has_any_legal_moves: bool,
+    pub last_checked_turn: u32,
+}
+
+// Trait for DiceState helper functions
+pub trait DiceStateTrait {
+    fn contains_piece_type(self: @DiceState, piece_type: PieceType) -> bool;
+    fn get_available_piece_types(self: @DiceState) -> Array<PieceType>;
+}
+
+pub impl DiceStateImpl of DiceStateTrait {
+    fn contains_piece_type(self: @DiceState, piece_type: PieceType) -> bool {
+        *self.dice1 == piece_type || *self.dice2 == piece_type || *self.dice3 == piece_type
     }
 
-    #[test]
-    fn test_vec_is_equal() {
-        let position = Vec2 { x: 420, y: 0 };
-        assert(position.is_equal(Vec2 { x: 420, y: 0 }), 'not equal');
+    fn get_available_piece_types(self: @DiceState) -> Array<PieceType> {
+        let mut piece_types = array![];
+
+        // Add dice1 if not already in array
+        piece_types.append(*self.dice1);
+
+        // Add dice2 if different from dice1
+        piece_types.append(*self.dice2);
+
+        // Add dice3 if different from both dice1 and dice2
+        piece_types.append(*self.dice3);
+
+        piece_types
+    }
+}
+
+// Trait for PlayerMoveCapability helper functions
+pub trait PlayerMoveCapabilityTrait {
+    fn can_move_piece_type(self: @PlayerMoveCapability, piece_type: PieceType) -> bool;
+    fn get_movable_piece_types(self: @PlayerMoveCapability) -> Array<PieceType>;
+}
+
+pub impl PlayerMoveCapabilityImpl of PlayerMoveCapabilityTrait {
+    fn can_move_piece_type(self: @PlayerMoveCapability, piece_type: PieceType) -> bool {
+        match piece_type {
+            PieceType::Pawn => *self.can_move_pawn,
+            PieceType::Bishop => *self.can_move_bishop,
+            PieceType::Knight => *self.can_move_knight,
+            PieceType::Rook => *self.can_move_rook,
+            PieceType::Queen => *self.can_move_queen,
+            PieceType::King => *self.can_move_king,
+        }
+    }
+
+    fn get_movable_piece_types(self: @PlayerMoveCapability) -> Array<PieceType> {
+        let mut movable_types = array![];
+
+        if *self.can_move_pawn {
+            movable_types.append(PieceType::Pawn);
+        }
+        if *self.can_move_bishop {
+            movable_types.append(PieceType::Bishop);
+        }
+        if *self.can_move_knight {
+            movable_types.append(PieceType::Knight);
+        }
+        if *self.can_move_rook {
+            movable_types.append(PieceType::Rook);
+        }
+        if *self.can_move_queen {
+            movable_types.append(PieceType::Queen);
+        }
+        if *self.can_move_king {
+            movable_types.append(PieceType::King);
+        }
+
+        movable_types
     }
 }

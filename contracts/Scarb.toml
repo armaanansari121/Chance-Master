@@ -1,6 +1,6 @@
 [package]
 cairo-version = "=2.10.1"
-name = "dojo_starter"
+name = "dice_chess"
 version = "1.5.0"
 edition = "2024_07"
 
@@ -14,8 +14,6 @@ move = "sozo execute dojo_starter-actions move -c 1 --wait" # scarb run move
 
 [dependencies]
 dojo = { git = "https://github.com/dojoengine/dojo", tag = "v1.5.0" }
-origami_random = { git = "https://github.com/dojoengine/origami" }
-origami_map = { git = "https://github.com/dojoengine/origami" }
 
 [[target.starknet-contract]]
 build-external-contracts = ["dojo::world::world_contract::world"]

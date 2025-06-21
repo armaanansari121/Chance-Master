@@ -1,9 +1,9 @@
 {
   "world": {
-    "class_hash": "0x2660e42e300e85d14619e31ab1c51520a98ecd6ff97accefb40b62b260aeafc",
-    "address": "0x4a8ed1a46118db416888f6b98caf1e4c64bb33a20f89d98cbc59da46856fb7e",
+    "class_hash": "0x4c60dc46a8ca8bb47675b7b914053cef769afbf0e340523187336b72bd71d1f",
+    "address": "0x7cb912d0029e3799c4b8f2253b21481b2ec814c5daf72de75164ca82e7c42a5",
     "seed": "dojo_starter",
-    "name": "Dojo starter",
+    "name": "Dice Chess",
     "entrypoints": [
       "uuid",
       "set_metadata",
@@ -693,6 +693,22 @@
           },
           {
             "type": "function",
+            "name": "owners_count",
+            "inputs": [
+              {
+                "name": "resource",
+                "type": "core::felt252"
+              }
+            ],
+            "outputs": [
+              {
+                "type": "core::integer::u64"
+              }
+            ],
+            "state_mutability": "view"
+          },
+          {
+            "type": "function",
             "name": "is_writer",
             "inputs": [
               {
@@ -1312,12 +1328,12 @@
   },
   "contracts": [
     {
-      "address": "0x76461d50a37c5c6f8167cd14ddc641cb98b4ef608f36f67fdf6748338b2626c",
-      "class_hash": "0x3960b38c19aec8dfa20bac3625b3d63c1553601ec9db43197ed20910019f2a7",
+      "address": "0x21f888f001b5e70ee166cd66e23568bdcedd1749f6298ce05969478f54f9039",
+      "class_hash": "0x3465ba1c15ba7a4897fd4bed2cb26b58f5de4b2c41e45da06aff362bdbd104d",
       "abi": [
         {
           "type": "impl",
-          "name": "actions__ContractImpl",
+          "name": "dice_chess_actions__ContractImpl",
           "interface_name": "dojo::contract::interface::IContract"
         },
         {
@@ -1327,7 +1343,7 @@
         },
         {
           "type": "impl",
-          "name": "actions__DeployedContractImpl",
+          "name": "dice_chess_actions__DeployedContractImpl",
           "interface_name": "dojo::meta::interface::IDeployedResource"
         },
         {
@@ -1367,52 +1383,47 @@
         },
         {
           "type": "impl",
-          "name": "ActionsImpl",
-          "interface_name": "dojo_starter::systems::actions::IActions"
+          "name": "DiceChessActionsImpl",
+          "interface_name": "dice_chess::systems::actions::IDiceChessActions"
         },
         {
           "type": "enum",
-          "name": "dojo_starter::models::Direction",
+          "name": "core::bool",
           "variants": [
             {
-              "name": "Left",
+              "name": "False",
               "type": "()"
             },
             {
-              "name": "Right",
-              "type": "()"
-            },
-            {
-              "name": "Up",
-              "type": "()"
-            },
-            {
-              "name": "Down",
+              "name": "True",
               "type": "()"
             }
           ]
         },
         {
           "type": "interface",
-          "name": "dojo_starter::systems::actions::IActions",
+          "name": "dice_chess::systems::actions::IDiceChessActions",
           "items": [
             {
               "type": "function",
-              "name": "spawn",
+              "name": "join_queue",
               "inputs": [],
-              "outputs": [],
+              "outputs": [
+                {
+                  "type": "core::integer::u32"
+                }
+              ],
               "state_mutability": "external"
             },
             {
               "type": "function",
-              "name": "move",
-              "inputs": [
+              "name": "leave_queue",
+              "inputs": [],
+              "outputs": [
                 {
-                  "name": "direction",
-                  "type": "dojo_starter::models::Direction"
+                  "type": "core::bool"
                 }
               ],
-              "outputs": [],
               "state_mutability": "external"
             }
           ]
@@ -1516,7 +1527,7 @@
         },
         {
           "type": "event",
-          "name": "dojo_starter::systems::actions::actions::Event",
+          "name": "dice_chess::systems::actions::dice_chess_actions::Event",
           "kind": "enum",
           "variants": [
             {
@@ -1533,11 +1544,11 @@
         }
       ],
       "init_calldata": [],
-      "tag": "dojo_starter-actions",
-      "selector": "0x7a1c71029f2d0b38e3ac89b09931d08b6e48417e079c289ff19a8698d0cba33",
+      "tag": "dice_chess-dice_chess_actions",
+      "selector": "0x3c4deaefa847b2f7e7cb4bcb2968f0989771757c22d319b5ea5934b21c84497",
       "systems": [
-        "spawn",
-        "move",
+        "join_queue",
+        "leave_queue",
         "upgrade"
       ]
     }
@@ -1546,35 +1557,59 @@
   "models": [
     {
       "members": [],
-      "class_hash": "0x46d4db177d7edf355bf1e51fa72023171232b928ef3b9467dbd541611da5f83",
-      "tag": "dojo_starter-DirectionsAvailable",
-      "selector": "0x77844f1facb51e60e546a9832d56c6bd04fa23be4fd5b57290caae5e9a3c1e4"
+      "class_hash": "0x668d7c7e8e213449ee8ac40e1bea78797d0f7c4e639061cb7507d0a5bf91e9c",
+      "tag": "dice_chess-DiceState",
+      "selector": "0x515b65194a014d353acb1a5a5e56ef06469112a266eb79b05006b1b03f4539"
     },
     {
       "members": [],
-      "class_hash": "0x5a3dcd4bf5a0e6fff9ca88dcd77c6b49f1a33a1b9bbea8ce5aa5290e9470070",
-      "tag": "dojo_starter-Moves",
-      "selector": "0x2a29373f1af8348bd366a990eb3a342ef2cbe5e85160539eaca3441a673f468"
+      "class_hash": "0x3f1d104d2947b93cb244acca5d141e3c4bf039105e5231205e2d337924f0c16",
+      "tag": "dice_chess-Game",
+      "selector": "0x7bc42b8dbade9f502f9d3ceb22bb8177ef0f87c28625118a17bfeb522508224"
     },
     {
       "members": [],
-      "class_hash": "0x7231f1cec2b0ba37c39e6d919d35648d07d86a687680aa92ccb0d65fe5af17e",
-      "tag": "dojo_starter-Position",
-      "selector": "0x2ac8b4c190f7031b9fc44312e6b047a1dce0b3f2957c33a935ca7846a46dd5b"
+      "class_hash": "0x2c5dc6e80c9268baa6614d2347cd80707236402451d364d327fcc9276ae08db",
+      "tag": "dice_chess-MatchmakingEntry",
+      "selector": "0x28fde454cf7c9a28c211395656bd87db4f56550c6e671d16a618b61c13bf371"
     },
     {
       "members": [],
-      "class_hash": "0x4518971c1abf10a6c1c40f8f72fc34816dee4752d66f0f2b9d29a62f4fb3310",
-      "tag": "dojo_starter-PositionCount",
-      "selector": "0x44e8e8c3aea54e97e01563cacc08abb4a8ce8c468cd4d3a332bca12bfc2290d"
+      "class_hash": "0x64a205bdf1ccb5427dc62d2b9b50fda74443c5aaaea34c8f1f64732095bd8ae",
+      "tag": "dice_chess-MatchmakingQueue",
+      "selector": "0x574389e55ee0c09a3ca51317d01f0355efad041295e0397f56f8f6dd0f09f66"
+    },
+    {
+      "members": [],
+      "class_hash": "0x47484321f87e33d007c4b274438ea6c62e8e844781ac8960ee227776288dd5d",
+      "tag": "dice_chess-PlayerMoveCapability",
+      "selector": "0x87f24ef6476af040a3b14df231c6843e2117031b5a963c0fdbc355002247f"
+    },
+    {
+      "members": [],
+      "class_hash": "0xd7cd6d5ce255a396e6cc144427f8276ca0538a5c12e810dfa39d93a4d8760a",
+      "tag": "dice_chess-PlayerProfile",
+      "selector": "0x38558fcab407a786a66d700c8e154a7fc0bb7b1f2d59fa18d61eeacc6fcb32f"
     }
   ],
   "events": [
     {
       "members": [],
-      "class_hash": "0x49f539cc331573abc29d729a65824485514906457af4049ff148ffe421520cb",
-      "tag": "dojo_starter-Moved",
-      "selector": "0x504403e5c02b6442527721fc464d9ea5fc8f1ee600ab5ccd5c0845d36fd45f1"
+      "class_hash": "0xb4893e640244dddbb01a1d63218d909ed27b1480a52292a80ccb5650301f4c",
+      "tag": "dice_chess-GameCreated",
+      "selector": "0x4742f60a06a91a5e1c814ea5fa43148f39e0b22b82afce8b203af43e1627592"
+    },
+    {
+      "members": [],
+      "class_hash": "0x19ee716fb1a0eed90ed9d7ea582b2e98d29dffe9a633f54c0f0e2ff0b64bc35",
+      "tag": "dice_chess-PlayerJoinedQueue",
+      "selector": "0x5f853b3eef7b58c79c1a425559e15886135431270ab230e5f8e69c8d2f12ff0"
+    },
+    {
+      "members": [],
+      "class_hash": "0x42da4bf154e91e4e01e2379777fa66897e095be277e2e9cdb5bc2dd1c1914e8",
+      "tag": "dice_chess-PlayerLeftQueue",
+      "selector": "0x2672dc39c9433aa1a5e840b62f458e2cbb5168c6f5e8ffb2413dcb8239b8207"
     }
   ],
   "external_contracts": []
