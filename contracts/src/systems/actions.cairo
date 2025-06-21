@@ -17,7 +17,7 @@ pub mod dice_chess_actions {
     use starknet::{ContractAddress, get_block_timestamp, get_block_number, get_caller_address};
     use crate::models::{
         Game, GameStatus, MatchmakingEntry, MatchmakingQueue, PlayerProfile, ZERO_ADDRESS,
-        DiceState, PieceType,
+        DiceState, PieceType, Piece, BoardPos, Color,
     };
     use super::IDiceChessActions;
 
@@ -126,6 +126,9 @@ pub mod dice_chess_actions {
                 // Write models to world
                 world.write_model(@game);
                 world.write_model(@queue);
+
+                // Setup initial chess board for the new game
+                self.setup_initial_board(world, game_id);
 
                 // Emit game created event
                 world
@@ -319,6 +322,111 @@ pub mod dice_chess_actions {
                 5 => PieceType::King,
                 _ => PieceType::Pawn // Fallback (should never happen)
             }
+        }
+
+        /// Setup the initial chess board with all pieces in starting positions
+        fn setup_initial_board(self: @ContractState, mut world: WorldStorage, game_id: u32) {
+            // Setup white pieces (rank 0 and 1)
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 0, rank: 0 }, PieceType::Rook, Color::White,
+                );
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 1, rank: 0 }, PieceType::Knight, Color::White,
+                );
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 2, rank: 0 }, PieceType::Bishop, Color::White,
+                );
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 3, rank: 0 }, PieceType::Queen, Color::White,
+                );
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 4, rank: 0 }, PieceType::King, Color::White,
+                );
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 5, rank: 0 }, PieceType::Bishop, Color::White,
+                );
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 6, rank: 0 }, PieceType::Knight, Color::White,
+                );
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 7, rank: 0 }, PieceType::Rook, Color::White,
+                );
+
+            // White pawns (rank 1)
+            let mut file = 0;
+            while file < 8 {
+                self
+                    .place_piece(
+                        world, game_id, BoardPos { file, rank: 1 }, PieceType::Pawn, Color::White,
+                    );
+                file += 1;
+            };
+
+            // Setup black pieces (rank 7 and 6)
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 0, rank: 7 }, PieceType::Rook, Color::Black,
+                );
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 1, rank: 7 }, PieceType::Knight, Color::Black,
+                );
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 2, rank: 7 }, PieceType::Bishop, Color::Black,
+                );
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 3, rank: 7 }, PieceType::Queen, Color::Black,
+                );
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 4, rank: 7 }, PieceType::King, Color::Black,
+                );
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 5, rank: 7 }, PieceType::Bishop, Color::Black,
+                );
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 6, rank: 7 }, PieceType::Knight, Color::Black,
+                );
+            self
+                .place_piece(
+                    world, game_id, BoardPos { file: 7, rank: 7 }, PieceType::Rook, Color::Black,
+                );
+
+            // Black pawns (rank 6)
+            file = 0;
+            while file < 8 {
+                self
+                    .place_piece(
+                        world, game_id, BoardPos { file, rank: 6 }, PieceType::Pawn, Color::Black,
+                    );
+                file += 1;
+            };
+        }
+
+        /// Helper function to place a single piece on the board
+        fn place_piece(
+            self: @ContractState,
+            mut world: WorldStorage,
+            game_id: u32,
+            position: BoardPos,
+            piece_type: PieceType,
+            color: Color,
+        ) {
+            let piece = Piece { game_id, position, piece_type, color, has_moved: false };
+
+            world.write_model(@piece);
         }
     }
 }

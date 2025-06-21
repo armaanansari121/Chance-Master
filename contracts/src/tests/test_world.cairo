@@ -10,6 +10,7 @@ mod tests {
     use crate::models::{
         Game, GameStatus, MatchmakingEntry, MatchmakingQueue, PlayerProfile, DiceState, PieceType,
         ZERO_ADDRESS, m_Game, m_MatchmakingEntry, m_MatchmakingQueue, m_PlayerProfile, m_DiceState,
+        Piece, m_Piece, BoardPos, Color,
     };
     use crate::systems::actions::{
         IDiceChessActionsDispatcher, IDiceChessActionsDispatcherTrait, dice_chess_actions,
@@ -26,6 +27,7 @@ mod tests {
                 TestResource::Model(m_MatchmakingQueue::TEST_CLASS_HASH),
                 TestResource::Model(m_PlayerProfile::TEST_CLASS_HASH),
                 TestResource::Model(m_DiceState::TEST_CLASS_HASH),
+                TestResource::Model(m_Piece::TEST_CLASS_HASH),
                 TestResource::Event(dice_chess_actions::e_GameCreated::TEST_CLASS_HASH),
                 TestResource::Event(dice_chess_actions::e_PlayerJoinedQueue::TEST_CLASS_HASH),
                 TestResource::Event(dice_chess_actions::e_PlayerLeftQueue::TEST_CLASS_HASH),
@@ -160,7 +162,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected: ("Player already in queue", 'ENTRYPOINT_FAILED'))]
-    fn panic_test_join_queue_already_in_queue() {
+    fn test_join_queue_already_in_queue() {
         let ndef = namespace_def();
         let mut world = spawn_test_world([ndef].span());
         world.sync_perms_and_inits(contract_defs());
@@ -454,7 +456,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected: ("Game does not exist", 'ENTRYPOINT_FAILED'))]
-    fn panic_test_roll_dice_nonexistent_game() {
+    fn test_roll_dice_nonexistent_game() {
         let ndef = namespace_def();
         let mut world = spawn_test_world([ndef].span());
         world.sync_perms_and_inits(contract_defs());
@@ -496,7 +498,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected: ("Not your turn", 'ENTRYPOINT_FAILED'))]
-    fn panic_test_roll_dice_wrong_player_turn() {
+    fn test_roll_dice_wrong_player_turn() {
         let ndef = namespace_def();
         let mut world = spawn_test_world([ndef].span());
         world.sync_perms_and_inits(contract_defs());
@@ -536,7 +538,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected: ("Dice already rolled for this turn", 'ENTRYPOINT_FAILED'))]
-    fn panic_test_roll_dice_already_rolled() {
+    fn test_roll_dice_already_rolled() {
         let ndef = namespace_def();
         let mut world = spawn_test_world([ndef].span());
         world.sync_perms_and_inits(contract_defs());
@@ -582,7 +584,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected: ("Game is not active", 'ENTRYPOINT_FAILED'))]
-    fn panic_test_roll_dice_inactive_game() {
+    fn test_roll_dice_inactive_game() {
         let ndef = namespace_def();
         let mut world = spawn_test_world([ndef].span());
         world.sync_perms_and_inits(contract_defs());
@@ -668,5 +670,285 @@ mod tests {
         // Verify specific values
         assert!(dice_state1.rolled_timestamp == 12345, "Should have correct timestamp");
         assert!(dice_state1.rolled_by == white_player, "Should have correct player");
+    }
+
+    // =====================================
+    // COMPREHENSIVE TESTS FOR BOARD SETUP
+    // =====================================
+
+    #[test]
+    fn test_board_setup_creates_all_pieces() {
+        let ndef = namespace_def();
+        let mut world = spawn_test_world([ndef].span());
+        world.sync_perms_and_inits(contract_defs());
+
+        let (contract_address, _) = world.dns(@"dice_chess_actions").unwrap();
+        let system = IDiceChessActionsDispatcher { contract_address };
+
+        // Create a game (this should trigger board setup)
+        let (game_id, _white_player, _black_player) = create_test_game(@world, system);
+
+        // Count total pieces on the board
+        let mut piece_count = 0;
+        let mut file = 0;
+        while file < 8 {
+            let mut rank = 0;
+            while rank < 8 {
+                let position = BoardPos { file, rank };
+                let piece: Piece = world.read_model((game_id, position));
+
+                // Check if this position has a piece (not None)
+                if piece.piece_type != PieceType::None {
+                    piece_count += 1;
+                }
+                rank += 1;
+            };
+            file += 1;
+        };
+
+        // Should have exactly 32 pieces (16 white + 16 black)
+        assert!(piece_count == 32, "Should have exactly 32 pieces");
+    }
+
+    #[test]
+    fn test_board_setup_white_pieces_correct_positions() {
+        let ndef = namespace_def();
+        let mut world = spawn_test_world([ndef].span());
+        world.sync_perms_and_inits(contract_defs());
+
+        let (contract_address, _) = world.dns(@"dice_chess_actions").unwrap();
+        let system = IDiceChessActionsDispatcher { contract_address };
+
+        let (game_id, _white_player, _black_player) = create_test_game(@world, system);
+
+        // Test white back rank (rank 0)
+        let white_rook1: Piece = world.read_model((game_id, BoardPos { file: 0, rank: 0 }));
+        assert!(white_rook1.piece_type == PieceType::Rook, "a1 should be white rook");
+        assert!(white_rook1.color == Color::White, "a1 should be white");
+
+        let white_knight1: Piece = world.read_model((game_id, BoardPos { file: 1, rank: 0 }));
+        assert!(white_knight1.piece_type == PieceType::Knight, "b1 should be white knight");
+        assert!(white_knight1.color == Color::White, "b1 should be white");
+
+        let white_bishop1: Piece = world.read_model((game_id, BoardPos { file: 2, rank: 0 }));
+        assert!(white_bishop1.piece_type == PieceType::Bishop, "c1 should be white bishop");
+        assert!(white_bishop1.color == Color::White, "c1 should be white");
+
+        let white_queen: Piece = world.read_model((game_id, BoardPos { file: 3, rank: 0 }));
+        assert!(white_queen.piece_type == PieceType::Queen, "d1 should be white queen");
+        assert!(white_queen.color == Color::White, "d1 should be white");
+
+        let white_king: Piece = world.read_model((game_id, BoardPos { file: 4, rank: 0 }));
+        assert!(white_king.piece_type == PieceType::King, "e1 should be white king");
+        assert!(white_king.color == Color::White, "e1 should be white");
+
+        let white_bishop2: Piece = world.read_model((game_id, BoardPos { file: 5, rank: 0 }));
+        assert!(white_bishop2.piece_type == PieceType::Bishop, "f1 should be white bishop");
+        assert!(white_bishop2.color == Color::White, "f1 should be white");
+
+        let white_knight2: Piece = world.read_model((game_id, BoardPos { file: 6, rank: 0 }));
+        assert!(white_knight2.piece_type == PieceType::Knight, "g1 should be white knight");
+        assert!(white_knight2.color == Color::White, "g1 should be white");
+
+        let white_rook2: Piece = world.read_model((game_id, BoardPos { file: 7, rank: 0 }));
+        assert!(white_rook2.piece_type == PieceType::Rook, "h1 should be white rook");
+        assert!(white_rook2.color == Color::White, "h1 should be white");
+
+        // Test white pawns (rank 1)
+        let mut file = 0;
+        while file < 8 {
+            let pawn: Piece = world.read_model((game_id, BoardPos { file, rank: 1 }));
+            assert!(pawn.piece_type == PieceType::Pawn, "Rank 1 should have white pawns");
+            assert!(pawn.color == Color::White, "Rank 1 pawns should be white");
+            assert!(!pawn.has_moved, "Initial pieces should not have moved");
+            file += 1;
+        };
+    }
+
+    #[test]
+    fn test_board_setup_black_pieces_correct_positions() {
+        let ndef = namespace_def();
+        let mut world = spawn_test_world([ndef].span());
+        world.sync_perms_and_inits(contract_defs());
+
+        let (contract_address, _) = world.dns(@"dice_chess_actions").unwrap();
+        let system = IDiceChessActionsDispatcher { contract_address };
+
+        let (game_id, _white_player, _black_player) = create_test_game(@world, system);
+
+        // Test black back rank (rank 7)
+        let black_rook1: Piece = world.read_model((game_id, BoardPos { file: 0, rank: 7 }));
+        assert!(black_rook1.piece_type == PieceType::Rook, "a8 should be black rook");
+        assert!(black_rook1.color == Color::Black, "a8 should be black");
+
+        let black_knight1: Piece = world.read_model((game_id, BoardPos { file: 1, rank: 7 }));
+        assert!(black_knight1.piece_type == PieceType::Knight, "b8 should be black knight");
+        assert!(black_knight1.color == Color::Black, "b8 should be black");
+
+        let black_bishop1: Piece = world.read_model((game_id, BoardPos { file: 2, rank: 7 }));
+        assert!(black_bishop1.piece_type == PieceType::Bishop, "c8 should be black bishop");
+        assert!(black_bishop1.color == Color::Black, "c8 should be black");
+
+        let black_queen: Piece = world.read_model((game_id, BoardPos { file: 3, rank: 7 }));
+        assert!(black_queen.piece_type == PieceType::Queen, "d8 should be black queen");
+        assert!(black_queen.color == Color::Black, "d8 should be black");
+
+        let black_king: Piece = world.read_model((game_id, BoardPos { file: 4, rank: 7 }));
+        assert!(black_king.piece_type == PieceType::King, "e8 should be black king");
+        assert!(black_king.color == Color::Black, "e8 should be black");
+
+        // Test black pawns (rank 6)
+        let mut file = 0;
+        while file < 8 {
+            let pawn: Piece = world.read_model((game_id, BoardPos { file, rank: 6 }));
+            assert!(pawn.piece_type == PieceType::Pawn, "Rank 6 should have black pawns");
+            assert!(pawn.color == Color::Black, "Rank 6 pawns should be black");
+            assert!(!pawn.has_moved, "Initial pieces should not have moved");
+            file += 1;
+        };
+    }
+
+    #[test]
+    fn test_board_setup_empty_middle_ranks() {
+        let ndef = namespace_def();
+        let mut world = spawn_test_world([ndef].span());
+        world.sync_perms_and_inits(contract_defs());
+
+        let (contract_address, _) = world.dns(@"dice_chess_actions").unwrap();
+        let system = IDiceChessActionsDispatcher { contract_address };
+
+        let (game_id, _white_player, _black_player) = create_test_game(@world, system);
+
+        // Check that ranks 2, 3, 4, 5 are empty
+        let mut rank = 2;
+        while rank < 6 {
+            let mut file = 0;
+            while file < 8 {
+                let piece: Piece = world.read_model((game_id, BoardPos { file, rank }));
+                // Empty squares should have PieceType::None
+                assert!(piece.piece_type == PieceType::None, "Middle ranks should be empty");
+                file += 1;
+            };
+            rank += 1;
+        };
+    }
+
+    #[test]
+    fn test_board_setup_independent_games() {
+        let ndef = namespace_def();
+        let mut world = spawn_test_world([ndef].span());
+        world.sync_perms_and_inits(contract_defs());
+
+        let (contract_address, _) = world.dns(@"dice_chess_actions").unwrap();
+        let system = IDiceChessActionsDispatcher { contract_address };
+
+        // Create first game
+        let player1 = contract_address_const::<0x1>();
+        let player2 = contract_address_const::<0x2>();
+        testing::set_contract_address(player1);
+        system.join_queue();
+        testing::set_contract_address(player2);
+        let game_id1 = system.join_queue();
+
+        // Create second game
+        let player3 = contract_address_const::<0x3>();
+        let player4 = contract_address_const::<0x4>();
+        testing::set_contract_address(player3);
+        system.join_queue();
+        testing::set_contract_address(player4);
+        let game_id2 = system.join_queue();
+
+        // Verify both games have independent piece sets
+        assert!(game_id1 != game_id2, "Games should have different IDs");
+
+        // Check that both games have their own white king at e1
+        let king1: Piece = world.read_model((game_id1, BoardPos { file: 4, rank: 0 }));
+        let king2: Piece = world.read_model((game_id2, BoardPos { file: 4, rank: 0 }));
+
+        assert!(king1.game_id == game_id1, "King1 should belong to game1");
+        assert!(king2.game_id == game_id2, "King2 should belong to game2");
+        assert!(king1.piece_type == PieceType::King, "King1 should be a king");
+        assert!(king2.piece_type == PieceType::King, "King2 should be a king");
+        assert!(king1.color == Color::White, "Both kings should be white");
+        assert!(king2.color == Color::White, "Both kings should be white");
+
+        // Verify game1 pieces don't interfere with game2
+        let mut total_pieces_game1 = 0;
+        let mut total_pieces_game2 = 0;
+
+        let mut file = 0;
+        while file < 8 {
+            let mut rank = 0;
+            while rank < 8 {
+                let position = BoardPos { file, rank };
+                let piece1: Piece = world.read_model((game_id1, position));
+                let piece2: Piece = world.read_model((game_id2, position));
+
+                if piece1.piece_type != PieceType::None {
+                    total_pieces_game1 += 1;
+                }
+                if piece2.piece_type != PieceType::None {
+                    total_pieces_game2 += 1;
+                }
+                rank += 1;
+            };
+            file += 1;
+        };
+
+        assert!(total_pieces_game1 == 32, "Game1 should have 32 pieces");
+        assert!(total_pieces_game2 == 32, "Game2 should have 32 pieces");
+    }
+
+    #[test]
+    fn test_board_setup_pieces_have_correct_game_id() {
+        let ndef = namespace_def();
+        let mut world = spawn_test_world([ndef].span());
+        world.sync_perms_and_inits(contract_defs());
+
+        let (contract_address, _) = world.dns(@"dice_chess_actions").unwrap();
+        let system = IDiceChessActionsDispatcher { contract_address };
+
+        let (game_id, _white_player, _black_player) = create_test_game(@world, system);
+
+        // Check a few specific pieces to ensure they have the correct game_id
+        let white_king: Piece = world.read_model((game_id, BoardPos { file: 4, rank: 0 }));
+        assert!(white_king.game_id == game_id, "White king should have correct game_id");
+
+        let black_queen: Piece = world.read_model((game_id, BoardPos { file: 3, rank: 7 }));
+        assert!(black_queen.game_id == game_id, "Black queen should have correct game_id");
+
+        let white_pawn: Piece = world.read_model((game_id, BoardPos { file: 3, rank: 1 }));
+        assert!(white_pawn.game_id == game_id, "White pawn should have correct game_id");
+
+        let black_pawn: Piece = world.read_model((game_id, BoardPos { file: 5, rank: 6 }));
+        assert!(black_pawn.game_id == game_id, "Black pawn should have correct game_id");
+    }
+
+    #[test]
+    fn test_board_setup_all_pieces_unmarked_as_moved() {
+        let ndef = namespace_def();
+        let mut world = spawn_test_world([ndef].span());
+        world.sync_perms_and_inits(contract_defs());
+
+        let (contract_address, _) = world.dns(@"dice_chess_actions").unwrap();
+        let system = IDiceChessActionsDispatcher { contract_address };
+
+        let (game_id, _white_player, _black_player) = create_test_game(@world, system);
+        // Check that all pieces start with has_moved = false
+        let mut file = 0;
+        while file < 8 {
+            let mut rank = 0;
+            while rank < 8 {
+                let position = BoardPos { file, rank };
+                let piece: Piece = world.read_model((game_id, position));
+
+                // Only check pieces that exist (not None)
+                if piece.piece_type != PieceType::None {
+                    assert!(!piece.has_moved, "All initial pieces should not have moved");
+                }
+                rank += 1;
+            };
+            file += 1;
+        };
     }
 }

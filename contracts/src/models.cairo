@@ -8,6 +8,7 @@ pub const MAX_REROLL_ATTEMPTS: u32 = 100; // Safety limit to prevent infinite lo
 // Enums for Chess pieces and game states
 #[derive(Serde, Copy, Drop, Introspect, PartialEq)]
 pub enum PieceType {
+    None,
     Pawn,
     Bishop,
     Knight,
@@ -45,12 +46,13 @@ pub struct BoardPos {
 impl PieceTypeIntoFelt252 of Into<PieceType, felt252> {
     fn into(self: PieceType) -> felt252 {
         match self {
-            PieceType::Pawn => 0,
-            PieceType::Bishop => 1,
-            PieceType::Knight => 2,
-            PieceType::Rook => 3,
-            PieceType::Queen => 4,
-            PieceType::King => 5,
+            PieceType::None => 0,
+            PieceType::Pawn => 1,
+            PieceType::Bishop => 2,
+            PieceType::Knight => 3,
+            PieceType::Rook => 4,
+            PieceType::Queen => 5,
+            PieceType::King => 6,
         }
     }
 }
@@ -162,6 +164,19 @@ pub struct PlayerMoveCapability {
     pub last_checked_turn: u32,
 }
 
+// Chess piece model - represents individual pieces on the board
+#[derive(Copy, Drop, Serde)]
+#[dojo::model]
+pub struct Piece {
+    #[key]
+    pub game_id: u32,
+    #[key]
+    pub position: BoardPos,
+    pub piece_type: PieceType,
+    pub color: Color,
+    pub has_moved: bool,
+}
+
 // Trait for DiceState helper functions
 pub trait DiceStateTrait {
     fn contains_piece_type(self: @DiceState, piece_type: PieceType) -> bool;
@@ -198,6 +213,7 @@ pub trait PlayerMoveCapabilityTrait {
 pub impl PlayerMoveCapabilityImpl of PlayerMoveCapabilityTrait {
     fn can_move_piece_type(self: @PlayerMoveCapability, piece_type: PieceType) -> bool {
         match piece_type {
+            PieceType::None => false,
             PieceType::Pawn => *self.can_move_pawn,
             PieceType::Bishop => *self.can_move_bishop,
             PieceType::Knight => *self.can_move_knight,
@@ -230,5 +246,37 @@ pub impl PlayerMoveCapabilityImpl of PlayerMoveCapabilityTrait {
         }
 
         movable_types
+    }
+}
+
+// Trait for Piece helper functions
+pub trait PieceTrait {
+    fn is_empty(self: @Piece) -> bool;
+    fn is_enemy(self: @Piece, other_color: Color) -> bool;
+    fn is_friendly(self: @Piece, other_color: Color) -> bool;
+    fn empty() -> Piece; // Factory method for creating empty squares
+}
+
+pub impl PieceImpl of PieceTrait {
+    fn is_empty(self: @Piece) -> bool {
+        *self.piece_type == PieceType::None
+    }
+
+    fn is_enemy(self: @Piece, other_color: Color) -> bool {
+        !self.is_empty() && *self.color != other_color
+    }
+
+    fn is_friendly(self: @Piece, other_color: Color) -> bool {
+        !self.is_empty() && *self.color == other_color
+    }
+
+    fn empty() -> Piece {
+        Piece {
+            game_id: 0,
+            position: BoardPos { file: 0, rank: 0 },
+            piece_type: PieceType::None,
+            color: Color::White,
+            has_moved: false,
+        }
     }
 }
