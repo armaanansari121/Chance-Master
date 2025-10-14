@@ -1,0 +1,49 @@
+# Node
+node_modules/
+npm-debug.log*
+pnpm-lock.yaml
+yarn.lock
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+*.log
+
+# Python venv (you used one for garaga)
+.venv/
+.python-version
+
+# Starknet / Scarb
+target/
+snfoundry_trace/
+coverage/
+profile/
+.snfoundry_cache/
+
+# Keep specific deployed class artifacts from verifier packages if you really want to track them:
+# (Uncomment next lines ONLY if you want these JSONs committed)
+# !verifiers/**/target/dev/*_Groth16VerifierBN254.contract_class.json
+# !verifiers/**/target/dev/*_Groth16VerifierBN254.compiled_contract_class.json
+# (General rule-of-thumb is to ignore target/ entirely and keep artifacts elsewhere.) :contentReference[oaicite:1]{index=1}
+
+# Circom/SnarkJS build outputs (large or reproducible)
+circuits/build/
+
+# Keep only the VK (small, useful) and wasm + witness generator if you want to ship them to a client
+!circuits/build/verification_key.json
+!circuits/build/Orchestrator_js/
+# (Or move client-facing assets to /public and ignore circuits/build entirely.)
+
+# Powers of Tau / setup
+setup/powersOfTau*.ptau
+setup/pot*.ptau
+
+# Generated manifests / batches (optional — unignore if you want them tracked)
+circuits/inputs/*.json
+!circuits/inputs/.gitkeep
+circuits/build/batch/
+
+# Public built assets (keep all)
+!public/**
+

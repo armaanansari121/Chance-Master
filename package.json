@@ -1,0 +1,45 @@
+{
+  "name": "resolve",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=18 <=24" },
+  "scripts": {
+    "// --- build & local zk ---": "",
+    "zk:clean": "rm -rf circuits/build && mkdir -p circuits/build circuits/inputs setup verifiers",
+    "zk:compile": "circom circuits/rules/Orchestrator.circom --r1cs --wasm --sym -o circuits/build -l node_modules -l circuits/rules",
+    "zk:ptau:download": "mkdir -p setup && curl -L -o setup/powersOfTau28_hez_final_17.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_17.ptau",
+    "zk:setup": "snarkjs groth16 setup circuits/build/Orchestrator.r1cs setup/powersOfTau28_hez_final_17.ptau circuits/build/Orchestrator_0000.zkey && snarkjs zkey contribute circuits/build/Orchestrator_0000.zkey circuits/build/Orchestrator_final.zkey --name='contrib-1' -e='seed-1' && snarkjs zkey export verificationkey circuits/build/Orchestrator_final.zkey circuits/build/verification_key.json",
+    "zk:make-input": "ts-node --compiler-options '{\"module\":\"commonjs\",\"esModuleInterop\":true}' scripts/zk/make-input.ts",
+    "zk:witness": "node circuits/build/Orchestrator_js/generate_witness.js circuits/build/Orchestrator_js/Orchestrator.wasm circuits/inputs/input.json circuits/build/witness.wtns",
+    "zk:prove": "snarkjs groth16 prove circuits/build/Orchestrator_final.zkey circuits/build/witness.wtns circuits/build/proof.json circuits/build/public.json",
+    "zk:verify": "snarkjs groth16 verify circuits/build/verification_key.json circuits/build/public.json circuits/build/proof.json",
+
+    "// --- garaga: generate verifier + calldata ---": "",
+    "garaga:gen": "mkdir -p verifiers/groth16_orchestrator && (cd verifiers/groth16_orchestrator && (test -f Scarb.toml || scarb init --name groth16_orchestrator) >/dev/null 2>&1) && garaga gen --system groth16 --vk ../../circuits/build/verification_key.json --project-name groth16_orchestrator",
+    "garaga:build": "cd verifiers/groth16_orchestrator && scarb build",
+    "garaga:calldata": "garaga calldata --system groth16 --proof circuits/build/proof.json --public-inputs circuits/build/public.json --vk circuits/build/verification_key.json --output-path circuits/build",
+
+    "// --- starknet (starkli) ---": "",
+    "starknet:declare": "starkli declare ${VERIFIER_CLASS_JSON:?set VERIFIER_CLASS_JSON} --account ${STARKNET_ACCOUNT:?set STARKNET_ACCOUNT} --keystore ${STARKNET_KEYSTORE:?set STARKNET_KEYSTORE} --network ${STARKNET_NETWORK:-sepolia}",
+    "starknet:deploy": "starkli deploy ${CLASS_HASH:?set CLASS_HASH} --account ${STARKNET_ACCOUNT:?set STARKNET_ACCOUNT} --keystore ${STARKNET_KEYSTORE:?set STARKNET_KEYSTORE} --network ${STARKNET_NETWORK:-sepolia}",
+    "starknet:invoke:verify": "starkli invoke ${VERIFIER_ADDRESS:?set VERIFIER_ADDRESS} verify_groth16_proof_bn254 $(cat circuits/build/proof_calldata.txt) --account ${STARKNET_ACCOUNT:?set STARKNET_ACCOUNT} --keystore ${STARKNET_KEYSTORE:?set STARKNET_KEYSTORE} --network ${STARKNET_NETWORK:-sepolia}",
+    "starknet:invoke:node": "node scripts/starknet/invokeGaragaVerifier.js",
+
+    "// --- one-shot flows ---": "",
+    "zk:all": "npm run zk:clean && npm run zk:compile && npm run zk:ptau:download && npm run zk:setup",
+    "zk:prove-all": "npm run zk:make-input && npm run zk:witness && npm run zk:prove && npm run zk:verify"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "chess.js": "^1.0.0",
+    "circomlib": "^2.0.5",
+    "snarkjs": "^0.7.5",
+    "starknet": "^7.6.4"
+  }
+}
+
