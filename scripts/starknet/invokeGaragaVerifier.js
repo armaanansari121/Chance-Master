@@ -1,13 +1,13 @@
-import { RpcProvider, Contract, Account, hash } from "starknet";
+import { RpcProvider, Contract, Account, hash, CallData } from "starknet";
 import fs from "fs";
 
 
 // === CONFIG ===
 const CONTRACT_ADDRESS =
-  "0x073c14fb2490b66fac2bbdf2936e4773d40b49a5a9286279924ad1f8d5bd3b40";
+  "0x061b11332aec63419e264c23ebfc4e2005ea70d2cceefdeea83b867798b0cba5";
 const CALLDATA_PATH = "./circuits/build/proof_calldata.txt"; // or your garaga calldata file
-const RPC_URL = "https://starknet-sepolia.public.blastapi.io/rpc/v0_8";
-
+const RPC_URL = "http://localhost:5050";
+const FORK_BLOCK = "latest"
 // === MAIN ===
 async function main() {
   console.log("🚀 Invoking verifier contract on Starknet...");
@@ -21,13 +21,21 @@ async function main() {
   // Optionally try adding length if needed
   const calldataWithLen = [calldata.length.toString(), ...calldata];
 
-  const { abi: testAbi } = await provider.getClassAt(CONTRACT_ADDRESS);
-  if (testAbi == undefined) {
+  const blockId = { blockNumber: FORK_BLOCK };
+  const { abi } = await provider.getClassAt(CONTRACT_ADDRESS, FORK_BLOCK);
+  if (abi == undefined) {
     throw new Error('no abi')
   }
-  const contract = new Contract(testAbi, CONTRACT_ADDRESS, provider);
+  const contract = new Contract(abi, CONTRACT_ADDRESS, provider);
 
-  const res = await contract.verify_groth16_proof_bn254(calldata);
+  const cd = CallData.compile(
+    {
+      "full_proof_with_hints": calldata
+    }
+  )
+  const res = await contract.call("verify_groth16_proof_bn254", cd, {
+    blockIdentifier: FORK_BLOCK
+  });
   // Send transaction directly
   console.log(res)
 }

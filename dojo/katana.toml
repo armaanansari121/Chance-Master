@@ -1,0 +1,11 @@
+[forking]
+fork_provider = "https://starknet-sepolia.public.blastapi.io/rpc/v0_8"
+fork_block    = { Num = 2575531 }     # use a block NUMBER
+
+# alternatively, if you have a block hash:
+# fork_block = { Hash = "0x0123...abcd" }
+
+[dev]
+dev    = true
+no_fee = true
+
