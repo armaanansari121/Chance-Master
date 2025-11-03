@@ -206,35 +206,35 @@ const rollOnchainToUI = (t: Triple | null | undefined): [number, number, number]
 
 const shortAddr = (a?: string | null) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : '—');
 
-function AddrChip({
-  label,
-  addr,
-  accent,
-}: {
-  label: string;
-  addr?: string | null;
-  accent: 'white' | 'black';
-}) {
-  return (
-    <div className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs text-white/80">
-      <span className={`h-1.5 w-1.5 rounded-full ${accent === 'white' ? 'bg-emerald-400/80' : 'bg-purple-400/80'}`} />
-      <span className="font-medium">{label}</span>
-      <span className="font-mono tabular-nums text-white/70">{shortAddr(addr)}</span>
-      <span className={`ml-1 rounded-sm ${accent === 'white' ? 'bg-emerald-400/10 text-emerald-300' : 'bg-purple-400/10 text-purple-300'} px-1.5 py-0.5 text-[10px]`}>
-        live
-      </span>
-    </div>
-  );
-}
-
-function ClockPill({ ms, accent }: { ms: number; accent: 'white' | 'black' }) {
-  const badge = accent === 'white' ? 'text-emerald-300 bg-emerald-500/10' : 'text-purple-300 bg-purple-500/10';
-  return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs font-mono text-white/80">
-      <span className={`rounded px-1.5 py-0.5 ${badge}`}>{formatMs(ms)}</span>
-    </div>
-  );
-}
+// function AddrChip({
+//   label,
+//   addr,
+//   accent,
+// }: {
+//   label: string;
+//   addr?: string | null;
+//   accent: 'white' | 'black';
+// }) {
+//   return (
+//     <div className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs text-white/80">
+//       <span className={`h-1.5 w-1.5 rounded-full ${accent === 'white' ? 'bg-emerald-400/80' : 'bg-purple-400/80'}`} />
+//       <span className="font-medium">{label}</span>
+//       <span className="font-mono tabular-nums text-white/70">{shortAddr(addr)}</span>
+//       <span className={`ml-1 rounded-sm ${accent === 'white' ? 'bg-emerald-400/10 text-emerald-300' : 'bg-purple-400/10 text-purple-300'} px-1.5 py-0.5 text-[10px]`}>
+//         live
+//       </span>
+//     </div>
+//   );
+// }
+// 
+// function ClockPill({ ms, accent }: { ms: number; accent: 'white' | 'black' }) {
+//   const badge = accent === 'white' ? 'text-emerald-300 bg-emerald-500/10' : 'text-purple-300 bg-purple-500/10';
+//   return (
+//     <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs font-mono text-white/80">
+//       <span className={`rounded px-1.5 py-0.5 ${badge}`}>{formatMs(ms)}</span>
+//     </div>
+//   );
+// }
 
 // ---------- Component ----------
 
@@ -747,6 +747,16 @@ export default function ChessPage() {
   const whiteRunning = onchainTurnRef.current === 0 && shouldRun;
   const blackRunning = onchainTurnRef.current === 1 && shouldRun;
 
+  // ---------- NEW: helpers for right panel ----------
+  const allowedNames = useMemo(() => {
+    const order: Array<'p' | 'n' | 'b' | 'r' | 'q' | 'k'> = ['p', 'n', 'b', 'r', 'q', 'k'];
+    return order.filter(t => allowedPieceSet.has(t)).map(pieceName);
+  }, [allowedPieceSet]);
+
+  const resultText = latestGameRef.current?.result && latestGameRef.current?.result !== 'None'
+    ? String(latestGameRef.current.result)
+    : null;
+
   return (
     <main className="min-h-screen">
       <div className="container mx-auto grid max-w-6xl grid-cols-1 gap-6 p-6 lg:grid-cols-[minmax(320px,640px)_1fr]">
@@ -794,33 +804,21 @@ export default function ChessPage() {
           />
         </div>
 
+        {/* ---------------- RIGHT PANEL (revamped) ---------------- */}
         <aside className="space-y-4 rounded-2xl p-4" style={{ background: 'linear-gradient(180deg,rgba(17,27,34,.92),rgba(11,19,24,.92))' }}>
+          {/* Header: Turn & status */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className={`h-2.5 w-2.5 rounded-full ${turnDot}`} />
-              <h2 className="text-base font-medium text.white/90">{(game.turn() as 'w' | 'b') === 'w' ? 'White to move' : 'Black to move'}</h2>
+              <h2 className="text-base font-medium text.white/90">
+                {(game.turn() as 'w' | 'b') === 'w' ? 'White to move' : 'Black to move'}
+              </h2>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Timer
-              key={`w-${Math.floor(displayMs.white / 1000)}-${onchainTurnRef.current}`}
-              label="White"
-              initial={displayMs.white}
-              running={whiteRunning}
-              accent="white"
-              invert
-              onTimeout={() => fireTimeoutOnce('white')}
-            />
-            <Timer
-              key={`b-${Math.floor(displayMs.black / 1000)}-${onchainTurnRef.current}`}
-              label="Black"
-              initial={displayMs.black}
-              running={blackRunning}
-              accent="black"
-              invert
-              onTimeout={() => fireTimeoutOnce('black')}
-            />
+            {resultText ? (
+              <span className="rounded-md bg-white/10 px-2 py-1 text-xs text-white/80">
+                Result: {resultText}
+              </span>
+            ) : null}
           </div>
 
           {(flagged.white || flagged.black) && (
@@ -829,23 +827,28 @@ export default function ChessPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-lg bg-white/5 p-3 text-sm text.white/80">
-              <div className="text-xs text-white/60">turn</div>
-              <div className="mt-1 font-semibold">{(game.turn() as 'w' | 'b') === 'w' ? 'White' : 'Black'}</div>
-            </div>
-            <div className="rounded-lg bg-white/5 p-3 text-sm text-white/80">
+          {/* Quick status row */}
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <div className="rounded-lg bg-white/5 p-3">
               <div className="text-xs text-white/60">last move</div>
               <div className="mt-1 font-mono text-xs">
                 {last ? `${last.from}→${last.to}` : <span className="text-white/40">—</span>}
               </div>
             </div>
-            <div className="rounded-lg bg-white/5 p-3 text-sm text-white/80">
+            <div className="rounded-lg bg-white/5 p-3">
               <div className="text-xs text-white/60">claim</div>
               <div className="mt-1">{claimKind !== 'None' ? claimKind : '—'}</div>
             </div>
+            <div className="rounded-lg bg-white/5 p-3">
+              <div className="text-xs text-white/60">draw</div>
+              <div className={`mt-1 inline-flex items-center gap-1 ${drawPending ? 'text-amber-300' : 'text-white/70'}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${drawPending ? 'bg-amber-300' : 'bg-white/30'}`} />
+                {drawPending ? 'Offered' : '—'}
+              </div>
+            </div>
           </div>
 
+          {/* Dice */}
           <DiceTray
             values={dice}
             rolling={rolling}
@@ -865,41 +868,87 @@ export default function ChessPage() {
             title="dice"
           />
 
+          {/* Draw controls */}
           <section className="glass-card p-3">
-            <div className="mb-2 text-sm font-medium text-white/80">gameplay</div>
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-sm font-medium text-white/80">Draw</div>
+              {drawPending && (
+                <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-[11px] text-amber-300">
+                  offered
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={onOfferDraw} disabled={disableActions} className="btn btn-ghost disabled:opacity-50">offer draw</button>
-              <button onClick={onResign} disabled={disableActions} className="btn btn-ghost disabled:opacity-50">resign</button>
+              <button
+                onClick={onOfferDraw}
+                disabled={disableActions}
+                className="btn btn-ghost disabled:opacity-50"
+              >
+                Offer Draw
+              </button>
+              <button
+                onClick={onOfferDraw}
+                disabled={disableActions || !drawPending || !meToMove}
+                className="btn btn-primary disabled:opacity-50"
+                title="Protocol: accept by offering back while it's your move"
+              >
+                Accept Draw
+              </button>
             </div>
-            <div className="mt-2">
-              <button onClick={onFlag} disabled={disableActions} className="btn btn-ghost w-full disabled:opacity-50">flag win</button>
-            </div>
+            {drawPending && (
+              <p className="mt-2 text-xs text-white/60">
+                To accept a draw, the side-to-move must also offer a draw.
+              </p>
+            )}
           </section>
 
+          {/* Claims (radio bar instead of dropdown) */}
           <section className="glass-card p-3">
-            <div className="mb-2 text-sm font-medium text-white/80">claims</div>
-            <div className="mb-3 flex items-center gap-2">
-              <label className="text-xs text-white/60">type</label>
-              <select
-                value={claimType}
-                onChange={(e) => setClaimType(e.target.value as 'Checkmate' | 'Stalemate')}
-                className="flex-1 rounded-md border border-white/15 bg-black/30 px-2 py-1 text-sm text-white/90"
-              >
-                <option value="Checkmate">Checkmate</option>
-                <option value="Stalemate">Stalemate</option>
-              </select>
+            <div className="mb-2 text-sm font-medium text-white/80">Claims</div>
+
+            <div className="mb-3">
+              <div className="inline-grid grid-cols-2 overflow-hidden rounded-md border border-white/15">
+                {(['Checkmate', 'Stalemate'] as const).map((opt, idx) => {
+                  const active = claimType === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setClaimType(opt)}
+                      className={[
+                        'px-3 py-1.5 text-sm transition',
+                        active ? 'bg-white/15 text-white' : 'bg-black/20 text-white/70 hover:text-white/90',
+                        idx === 0 ? 'border-r border-white/10' : '',
+                      ].join(' ')}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              <button onClick={onClaim} disabled={disableActions} className="btn btn-primary disabled:opacity-50">claim</button>
-              <button onClick={onAcceptClaim} disabled={disableActions || !(claimKind !== 'None' && meToMove)} className="btn btn-ghost disabled:opacity-50">accept</button>
-              <button onClick={onAdjudicate} disabled={disableActions || claimKind === 'None'} className="btn btn-ghost disabled:opacity-50">adjudicate</button>
+              <button onClick={onClaim} disabled={disableActions} className="btn btn-primary disabled:opacity-50">Claim</button>
+              <button onClick={onAcceptClaim} disabled={disableActions || !(claimKind !== 'None' && meToMove)} className="btn btn-ghost disabled:opacity-50">Accept</button>
+              <button onClick={onAdjudicate} disabled={disableActions || claimKind === 'None'} className="btn btn-ghost disabled:opacity-50">Adjudicate</button>
             </div>
             {claimKind !== 'None' && (
               <p className="mt-2 text-xs text-white/60">
                 Only side-to-move may accept. Adjudication succeeds if opponent’s clock has expired.
               </p>
             )}
+            <p className="mt-2 text-xs text-white/60">
+              You can refute a claim by playing a valid move</p>
+          </section>
+
+          {/* Gameplay actions */}
+          <section className="glass-card p-3">
+            <div className="mb-2 text-sm font-medium text-white/80">Gameplay</div>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={onFlag} disabled={disableActions} className="btn btn-ghost disabled:opacity-50">Flag Win</button>
+              <button onClick={onResign} disabled={disableActions} className="btn btn-ghost disabled:opacity-50">Resign</button>
+            </div>
           </section>
         </aside>
       </div>
