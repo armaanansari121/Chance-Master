@@ -1,4 +1,3 @@
-// src/app/hooks/useMatchmaking.tsx
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -79,7 +78,6 @@ export function useMatchmaking() {
     error: null,
   });
 
-  console.log(st)
   // ---------- GlobalVars: seed + subscribe ----------
   useEffect(() => {
     let cancel = false;
@@ -117,7 +115,6 @@ export function useMatchmaking() {
               if (!gv) return;
 
               const q: string[] = Array.isArray(gv.queue) ? gv.queue : [];
-
               setSt((s) => ({ ...s, queue: q }));
             },
             error: () => { },
@@ -125,10 +122,7 @@ export function useMatchmaking() {
           }
         );
         stop = () => {
-          try {
-            closed = true;
-            unsub();
-          } catch { }
+          try { closed = true; unsub(); } catch { }
         };
       } catch (e: any) {
         if (!cancel) {
@@ -143,9 +137,7 @@ export function useMatchmaking() {
 
     return () => {
       cancel = true;
-      try {
-        stop?.();
-      } catch { }
+      try { stop?.(); } catch { }
     };
   }, [address]);
 
@@ -161,7 +153,7 @@ export function useMatchmaking() {
         is_enqueued: false,
         is_in_game: false,
         last_game_id: null,
-        loadingP: false,
+        loadingP: false, // we’re “done” loading player because there is no wallet
       }));
       return;
     }
@@ -202,7 +194,6 @@ export function useMatchmaking() {
               );
               if (!pl) return;
 
-              console.log(pl)
               setSt((s) => ({
                 ...s,
                 is_enqueued: pl.is_enqueued,
@@ -215,10 +206,7 @@ export function useMatchmaking() {
           }
         );
         stop = () => {
-          try {
-            closed = true;
-            unsub();
-          } catch { }
+          try { closed = true; unsub(); } catch { }
         };
       } catch (e: any) {
         if (!cancel) {
@@ -233,9 +221,7 @@ export function useMatchmaking() {
 
     return () => {
       cancel = true;
-      try {
-        stop?.();
-      } catch { }
+      try { stop?.(); } catch { }
     };
   }, [address]);
 
@@ -244,9 +230,7 @@ export function useMatchmaking() {
   const ensureEnqueued = useCallback(async () => {
     if (!address) return;
     if (enqOnceRef.current) return;
-
     if (st.loadingQ || st.loadingP) return;
-
     if (st.is_in_game || st.is_enqueued) return;
 
     try {
@@ -269,6 +253,7 @@ export function useMatchmaking() {
       enqOnceRef.current = false;
     }
   }, [address, enqueue, st.loadingQ, st.loadingP, st.is_in_game, st.is_enqueued]);
+
   const loading = st.loadingQ || st.loadingP;
   return { ...st, loading, ensureEnqueued };
 }
