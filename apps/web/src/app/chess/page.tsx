@@ -202,40 +202,6 @@ const rollOnchainToUI = (t: Triple | null | undefined): [number, number, number]
   return [conv(toNum(t?._0)), conv(toNum(t?._1)), conv(toNum(t?._2))];
 };
 
-// ----------------- NEW: UI helpers for address/timer strips -----------------
-
-const shortAddr = (a?: string | null) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : '—');
-
-// function AddrChip({
-//   label,
-//   addr,
-//   accent,
-// }: {
-//   label: string;
-//   addr?: string | null;
-//   accent: 'white' | 'black';
-// }) {
-//   return (
-//     <div className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs text-white/80">
-//       <span className={`h-1.5 w-1.5 rounded-full ${accent === 'white' ? 'bg-emerald-400/80' : 'bg-purple-400/80'}`} />
-//       <span className="font-medium">{label}</span>
-//       <span className="font-mono tabular-nums text-white/70">{shortAddr(addr)}</span>
-//       <span className={`ml-1 rounded-sm ${accent === 'white' ? 'bg-emerald-400/10 text-emerald-300' : 'bg-purple-400/10 text-purple-300'} px-1.5 py-0.5 text-[10px]`}>
-//         live
-//       </span>
-//     </div>
-//   );
-// }
-// 
-// function ClockPill({ ms, accent }: { ms: number; accent: 'white' | 'black' }) {
-//   const badge = accent === 'white' ? 'text-emerald-300 bg-emerald-500/10' : 'text-purple-300 bg-purple-500/10';
-//   return (
-//     <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs font-mono text-white/80">
-//       <span className={`rounded px-1.5 py-0.5 ${badge}`}>{formatMs(ms)}</span>
-//     </div>
-//   );
-// }
-
 // ---------- Component ----------
 
 export default function ChessPage() {
@@ -270,27 +236,56 @@ export default function ChessPage() {
   }, [sp]);
   const { address } = useAccount();
 
+  // Track current address for delayed checks
+  const addressRef = useRef<string | null>(null);
+  useEffect(() => { addressRef.current = address ?? null; }, [address]);
+
   const {
     resign, offerDraw, claim, acceptClaim, adjudicateClaim, flagWin, roll, submitMove, ready,
   } = useActions();
 
   const onchainTurnRef = useRef<0 | 1>(0);
 
+  const [guardLoading, setGuardLoading] = useState(true);
+  const didNormalizeRef = useRef(false);
+
+  // NEW: seed/redirect debouncers
+  const seededOkRef = useRef(false); // becomes true once we successfully seed subs for the current gid
+  const pendingRedirectTimerRef = useRef<number | null>(null);
+  const pendingNoWalletTimerRef = useRef<number | null>(null);
+  const clearTimer = (ref: React.MutableRefObject<number | null>) => {
+    if (ref.current) {
+      clearTimeout(ref.current);
+      ref.current = null;
+    }
+  };
+
   const shouldRun = useMemo(() => {
     if (flagged.white || flagged.black) return false;
     return !proving && displayMs.white > 0 && displayMs.black > 0 && !!clockBase.lastUpdatedSec;
   }, [proving, displayMs.white, displayMs.black, clockBase.lastUpdatedSec, flagged.white, flagged.black]);
 
-  const [guardLoading, setGuardLoading] = useState(true);
-  const didNormalizeRef = useRef(false);
-
-  // ---------- Entry guard ----------
+  // ---------- Entry guard (improved) ----------
   useEffect(() => {
     let cancel = false;
     let stop: (() => void) | null = null;
 
+    // If wallet isn't available immediately after a hard refresh,
+    // wait a short grace period before deciding to bounce to "/".
+    if (!address) {
+      setGuardLoading(true);
+      clearTimer(pendingNoWalletTimerRef);
+      pendingNoWalletTimerRef.current = window.setTimeout(() => {
+        if (!addressRef.current && !cancel) {
+          r.replace('/');
+        }
+      }, 2500); // 2.5s grace to let wallet reconnect on refresh
+      return () => {
+        clearTimer(pendingNoWalletTimerRef);
+      };
+    }
+
     (async () => {
-      if (!address) { r.replace('/'); return; }
       try {
         const seed = await gqlFetch<{
           chanceMasterPlayerModels: { edges: { node: { entity?: { id: string } | null; contract_address: string; is_in_game: boolean; last_game_id: number | string | null; } }[] }
@@ -298,19 +293,41 @@ export default function ChessPage() {
 
         if (cancel) return;
         const node = seed?.chanceMasterPlayerModels?.edges?.[0]?.node;
-        const eid = node?.entity?.id;
-        const isInGame = !!node?.is_in_game;
+        const eid = node?.entity?.id ?? null;
         const lastId = node?.last_game_id != null ? String(node?.last_game_id) : null;
+        const isInGame = !!node?.is_in_game;
 
         setGuardLoading(false);
 
-        if (!isInGame || !lastId || lastId === '0') { r.replace('/match'); return; }
-        if (!didNormalizeRef.current && gidStr !== lastId) {
-          didNormalizeRef.current = true;
-          r.replace(`/chess?game=${lastId}`);
+        // If URL has a gid:
+        if (gidStr) {
+          // Normalize to canonical game id if needed
+          if (lastId && gidStr !== lastId) {
+            didNormalizeRef.current = true;
+            r.replace(`/chess?game=${lastId}`);
+          } else {
+            // Debounce redirect to /match only if not seeded and user is not in game
+            clearTimer(pendingRedirectTimerRef);
+            if (!isInGame) {
+              pendingRedirectTimerRef.current = window.setTimeout(() => {
+                if (!seededOkRef.current && !cancel) {
+                  r.replace('/match');
+                }
+              }, 2000);
+            }
+          }
+        } else {
+          // No gid in URL; choose destination
+          if (isInGame && lastId) {
+            r.replace(`/chess?game=${lastId}`);
+          } else {
+            r.replace('/match');
+          }
         }
+
         if (!eid) return;
 
+        // Subscribe for live normalization without flicker
         const client = getWsClient();
         let closed = false;
         const unsub = client.subscribe(
@@ -321,10 +338,25 @@ export default function ChessPage() {
               const models = (msg as EntityUpdatedMsg).data?.entityUpdated?.models ?? [];
               const pl = models.find((m): m is CM_Player => m.__typename === 'chance_master_Player');
               if (!pl) return;
+
               const liveInGame = !!pl.is_in_game;
               const liveLastId = pl.last_game_id != null ? String(pl.last_game_id) : null;
-              if (!liveInGame || !liveLastId || liveLastId === '0') { r.replace('/match'); return; }
-              if (sp.get('game') !== liveLastId) { r.replace(`/chess?game=${liveLastId}`); }
+
+              if (liveInGame && liveLastId) {
+                clearTimer(pendingRedirectTimerRef);
+                if (sp.get('game') !== liveLastId) {
+                  r.replace(`/chess?game=${liveLastId}`);
+                }
+                return;
+              }
+
+              // If not in game, only go to /match if we haven't seeded a board yet
+              clearTimer(pendingRedirectTimerRef);
+              pendingRedirectTimerRef.current = window.setTimeout(() => {
+                if (!seededOkRef.current && !liveInGame && !liveLastId && !cancel) {
+                  r.replace('/match');
+                }
+              }, 1200);
             },
             error: () => { },
             complete: () => { },
@@ -337,7 +369,11 @@ export default function ChessPage() {
       }
     })();
 
-    return () => { cancel = true; try { stop?.(); } catch { } };
+    return () => {
+      clearTimer(pendingRedirectTimerRef);
+      clearTimer(pendingNoWalletTimerRef);
+      try { stop?.(); } catch { }
+    };
   }, [address, gidStr, r, sp]);
 
   // ---------- Seed + subs (game/board/clock/claim) ----------
@@ -347,6 +383,9 @@ export default function ChessPage() {
 
   useEffect(() => {
     if (gidStr == null) return;
+
+    // reset seed ok status whenever gid changes
+    seededOkRef.current = false;
 
     let stopBoard: (() => void) | null = null;
     let stopGame: (() => void) | null = null;
@@ -372,11 +411,17 @@ export default function ChessPage() {
         const clockEid = clockNode?.entity?.id;
         const claimEid = claimNode?.entity?.id;
 
-        if (!boardNode || !gameNode || !clockNode || !claimNode) { toast.error('Game not found'); return; }
+        if (!boardNode || !gameNode || !clockNode || !claimNode) {
+          toast.error('Game not found');
+          return;
+        }
 
         latestBoardRef.current = { __typename: 'chance_master_GameBoard', ...(boardNode as any) };
         latestGameRef.current = { __typename: 'chance_master_Game', ...(gameNode as any) };
         latestClaimRef.current = claimNode;
+
+        // Mark seed success early to suppress guard bouncing
+        seededOkRef.current = true;
 
         // Seed dice from onchain prev_roll
         if (isSentinel(gameNode.prev_roll as any)) setDice([0, 0, 0]);
@@ -729,29 +774,8 @@ export default function ChessPage() {
 
   const turnDot = (game.turn() as 'w' | 'b') === 'w' ? 'bg-emerald-400' : 'bg-purple-400';
 
-  const WHITE_ACCENT = {
-    text: 'text-emerald-400',
-    ringThin: 'ring-1 ring-emerald-400',
-    ringThick: 'ring-2 ring-emerald-400',
-    chipBg: 'bg-emerald-500/10',
-  };
-  const BLACK_ACCENT = {
-    text: 'text-purple-400',
-    ringThin: 'ring-1 ring-purple-400',
-    ringThick: 'ring-2 ring-purple-400',
-    chipBg: 'bg-purple-500/10',
-  };
-  const oppAccent = boardOrientation === 'white' ? BLACK_ACCENT : WHITE_ACCENT;
-  const meAccent = boardOrientation === 'white' ? WHITE_ACCENT : BLACK_ACCENT;
-
   const whiteRunning = onchainTurnRef.current === 0 && shouldRun;
   const blackRunning = onchainTurnRef.current === 1 && shouldRun;
-
-  // ---------- NEW: helpers for right panel ----------
-  const allowedNames = useMemo(() => {
-    const order: Array<'p' | 'n' | 'b' | 'r' | 'q' | 'k'> = ['p', 'n', 'b', 'r', 'q', 'k'];
-    return order.filter(t => allowedPieceSet.has(t)).map(pieceName);
-  }, [allowedPieceSet]);
 
   const resultText = latestGameRef.current?.result && latestGameRef.current?.result !== 'None'
     ? String(latestGameRef.current.result)
@@ -804,7 +828,7 @@ export default function ChessPage() {
           />
         </div>
 
-        {/* ---------------- RIGHT PANEL (revamped) ---------------- */}
+        {/* ---------------- RIGHT PANEL ---------------- */}
         <aside className="space-y-4 rounded-2xl p-4" style={{ background: 'linear-gradient(180deg,rgba(17,27,34,.92),rgba(11,19,24,.92))' }}>
           {/* Header: Turn & status */}
           <div className="flex items-center justify-between">
@@ -819,6 +843,28 @@ export default function ChessPage() {
                 Result: {resultText}
               </span>
             ) : null}
+          </div>
+
+          {/* Clocks */}
+          <div className="grid grid-cols-2 gap-3">
+            <Timer
+              key={`w-${Math.floor(displayMs.white / 1000)}-${onchainTurnRef.current}`}
+              label="White"
+              initial={displayMs.white}
+              running={whiteRunning}
+              accent="white"
+              invert
+              onTimeout={() => fireTimeoutOnce('white')}
+            />
+            <Timer
+              key={`b-${Math.floor(displayMs.black / 1000)}-${onchainTurnRef.current}`}
+              label="Black"
+              initial={displayMs.black}
+              running={blackRunning}
+              accent="black"
+              invert
+              onTimeout={() => fireTimeoutOnce('black')}
+            />
           </div>
 
           {(flagged.white || flagged.black) && (
@@ -902,7 +948,7 @@ export default function ChessPage() {
             )}
           </section>
 
-          {/* Claims (radio bar instead of dropdown) */}
+          {/* Claims (radio bar) */}
           <section className="glass-card p-3">
             <div className="mb-2 text-sm font-medium text-white/80">Claims</div>
 
@@ -939,7 +985,8 @@ export default function ChessPage() {
               </p>
             )}
             <p className="mt-2 text-xs text-white/60">
-              You can refute a claim by playing a valid move</p>
+              You can refute a claim by playing a valid move
+            </p>
           </section>
 
           {/* Gameplay actions */}
