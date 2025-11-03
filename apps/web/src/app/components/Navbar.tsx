@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import ConnectWallet from './ConnectWallet';
-import Logo from '../../../public/Logo.jpg'
+import Logo from '../../../public/Logo.png'
 import QueueButton from './QueueButton';
 
 export default function Navbar() {

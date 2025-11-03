@@ -1,13 +1,18 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import { Toaster } from "sonner";
-import Navbar from "./components/Navbar";
-import { SparklesCore } from "./components/Sparkles";
-import StarknetProvider from "./components/StarknetProvider";
+import type { Metadata } from 'next';
+import './globals.css';
+import { Toaster } from 'sonner';
+import Navbar from './components/Navbar';
+import { SparklesCore } from './components/Sparkles';
+import StarknetProvider from './components/StarknetProvider';
 
 export const metadata: Metadata = {
-  title: "Chance Master",
-  description: "Fully onchain chess with zk proofs on Starknet",
+  title: 'Chance Master',
+  description: 'Fully onchain chess with zk proofs on Starknet',
+  icons: {
+    icon: [{ url: '../../public/Logo.png', type: 'image/png' }],        // favicon / tab icon
+    shortcut: ['../../public/Logo.png'],
+    apple: [{ url: '../../public/Logo.png' }],                          // iOS home screen icon (uses same file)
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             particleColor="#FFFFFF"
           />
         </div>
+
         <StarknetProvider>
           <Navbar />
           <div className="h-14" />
