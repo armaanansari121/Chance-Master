@@ -12,7 +12,7 @@ Chance-Master is a multiplayer dice-chess variant where **every legal move is pr
 * **Real-time multi-play**: WebSocket subscriptions (Torii) keep both players instantly in sync.
 * **Sign-less UX**: Gameplay uses a permissive account/policy flow so you don’t manually sign each action during a match.
 * **Dojo ECS**: Game data lives in Dojo models (Game, GameBoard, GameClock, GameClaim, etc.) for clean, queryable state.
-* **Deterministic dice**: Contract emits a roll; UI encodes dice as the circuit expects and includes them in the proof.
+* **Verifiable dice**: Contract emits a roll; UI encodes dice as the circuit expects and includes them in the proof.
 
 > Key building blocks referenced in this repo: react-chessboard (UI), python-chess (state plumbing), snarkjs (Groth16), Starknet.js (RPC/Account), Dojo/Torii (world + live queries), Garaga (proof calldata for BN254). See references at the end.
 
