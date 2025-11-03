@@ -118,7 +118,7 @@ export function useMatchmaking() {
 
               const q: string[] = Array.isArray(gv.queue) ? gv.queue : [];
 
-              setSt((s) => ({ ...s, queue }));
+              setSt((s) => ({ ...s, queue: q }));
             },
             error: () => { },
             complete: () => { },

@@ -60,7 +60,7 @@ export default function MatchPage() {
     if (!ready || !address) return;
 
     // block enqueue if: already in game, already enqueued, or a valid game id exists
-    if (is_in_game || is_enqueued || gameId != null) return;
+    if (is_in_game || is_enqueued) return;
 
     if (inFlight.current || triedOnce.current) return;
 

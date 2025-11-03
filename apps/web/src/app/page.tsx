@@ -127,7 +127,7 @@ export default function Home() {
 
             <div className="flex flex-wrap items-center justify-center gap-3">
               <Link
-                href="/chess"
+                href="/match"
                 className="rounded-lg bg-emerald-400 px-5 py-3 text-sm font-medium text-black transition-transform hover:scale-[1.02] active:scale-[0.98]"
               >
                 Play now
