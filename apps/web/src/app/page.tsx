@@ -3,17 +3,41 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, type Transition } from 'framer-motion';
+import { useEffect, useState } from 'react';
 
 const spring: Transition = { type: 'spring', stiffness: 260, damping: 26 };
 
-function Section({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+function Section({
+  children,
+  delay = 0,
+  immediate = false, // <- immediate: animate right away (no whileInView)
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  immediate?: boolean;
+}) {
+  if (immediate) {
+    return (
+      <motion.section
+        initial={{ y: 12, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ ...spring, delay }}
+        className="w-full"
+        style={{ willChange: 'transform, opacity' }}
+      >
+        {children}
+      </motion.section>
+    );
+  }
+
   return (
     <motion.section
       initial={{ y: 12, opacity: 0 }}
       whileInView={{ y: 0, opacity: 1 }}
-      viewport={{ once: true, amount: 0.2 }}
+      viewport={{ once: true, amount: 0 }} // trigger as soon as it touches viewport
       transition={{ ...spring, delay }}
       className="w-full"
+      style={{ willChange: 'transform, opacity' }}
     >
       {children}
     </motion.section>
@@ -43,11 +67,12 @@ function Feature({
     <motion.div
       initial={{ y: 10, opacity: 0 }}
       whileInView={{ y: 0, opacity: 1 }}
-      viewport={{ once: true, amount: 0.3 }}
+      viewport={{ once: true, amount: 0.2 }}
       transition={{ ...spring, delay: 0.08 * i }}
       className="group relative rounded-xl border border-white/10 bg-white/[0.03] p-4 text-left"
+      style={{ willChange: 'transform, opacity' }}
     >
-      {/* Hover glow: subtle green, only on hover */}
+      {/* Hover glow */}
       <div
         className="
           pointer-events-none absolute inset-0 -z-10
@@ -77,26 +102,32 @@ function Stack({ children }: { children: React.ReactNode }) {
 }
 
 export default function Home() {
+  // Optional: ensure we start at top after redirect
+  useEffect(() => {
+    // In case a previous page had non-zero scroll
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
-    <main className="relative">
+    <main className="relative isolate min-h-screen">
       <Stack>
-        {/* HERO */}
-        <Section>
+        {/* HERO: immediate animate so it doesn't wait for intersection */}
+        <Section immediate>
           <div className="flex flex-col items-center gap-8 text-center">
             {/* BRAND LOGO — prominent, above badges */}
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
-              whileInView={{ scale: 1, opacity: 1 }}
-              viewport={{ once: true, amount: 0.3 }}
+              animate={{ scale: 1, opacity: 1 }}
               transition={{ ...spring, delay: 0.05 }}
               className="rounded-2xl border border-white/10 bg-white/[0.04] p-2 shadow-[0_0_40px_rgba(16,185,129,0.12)]"
+              style={{ willChange: 'transform, opacity' }}
             >
               <Image
                 src="/Logo.png"
                 alt="Chance Master"
                 width={84}
                 height={84}
-                className="h-16 w-16 sm:h-20 sm:w-20 rounded-xl object-contain"
+                className="h-16 w-16 rounded-xl object-contain sm:h-20 sm:w-20"
                 priority
               />
             </motion.div>
@@ -114,8 +145,10 @@ export default function Home() {
 
             <motion.h1
               className="text-balance bg-gradient-to-b from-white to-white/70 bg-clip-text text-5xl font-semibold leading-tight text-transparent sm:text-6xl md:text-7xl"
-              layout
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={spring}
+              style={{ willChange: 'transform, opacity' }}
             >
               Chance Master
             </motion.h1>
@@ -166,9 +199,10 @@ export default function Home() {
             <motion.div
               initial={{ scale: 0.98, opacity: 0 }}
               whileInView={{ scale: 1, opacity: 1 }}
-              viewport={{ once: true, amount: 0.3 }}
+              viewport={{ once: true, amount: 0.1 }}
               transition={{ ...spring, delay: 0.1 }}
               className="relative mt-12 w-full overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-3"
+              style={{ willChange: 'transform, opacity' }}
             >
               <div className="rounded-xl bg-gradient-to-b from-white/5 to-transparent p-3">
                 <div className="aspect-[16/9] w-full rounded-lg bg-[linear-gradient(90deg,transparent_49%,rgba(255,255,255,0.05)_50%,transparent_51%),linear-gradient(transparent_49%,rgba(255,255,255,0.05)_50%,transparent_51%)] bg-[size:40px_40px]">
@@ -274,7 +308,6 @@ export default function Home() {
           <div className="container mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 sm:grid-cols-4">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                {/* Swap brand icon to your Logo.png */}
                 <Image src="/Logo.png" alt="Chance Master" width={20} height={20} className="rounded-sm" />
                 <span className="font-semibold text-white/90">Chance Master</span>
               </div>

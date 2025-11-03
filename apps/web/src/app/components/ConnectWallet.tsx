@@ -77,7 +77,7 @@ export default function ConnectWallet() {
       <button
         onClick={onLogin}
         disabled={status === 'pending'}
-        className="rounded-lg bg-emerald-400 px-3 py-2 text-sm font-medium text-black transition-transform hover:scale-[1.02] active:scale-[0.98]"
+        className="rounded-lg bg-emerald-400 px-5 py-3 text-sm font-medium text-black disabled:opacity-50"
       >
         {status === 'pending' ? 'Connecting…' : 'Login with Cartridge'}
       </button>
