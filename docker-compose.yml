@@ -1,0 +1,107 @@
+volumes:
+  circuits_build: {}
+  web_node_modules:
+  web_next:
+
+services:
+  dojo-tools:
+    build:
+      context: packages/contracts-dojo
+    command: ["/bin/bash","-lc","sleep infinity"]
+
+  torii:
+    build:
+      context: packages/contracts-dojo
+    command: [
+      "torii",
+      "--world",
+      "0x03decd7644551cb5b3f79031e663b4c3f124cc001ea5f21d33572fa98b18b5d1",
+      "--rpc",
+      "https://api.cartridge.gg/x/starknet/sepolia",
+      "--http.addr","0.0.0.0",
+      "--http.cors_origins",
+      "*",
+      "--grpc.addr","0.0.0.0"
+    ]
+    ports: ["8080:8080"]
+
+  circuits:
+    build:
+      context: packages/circuits
+    volumes:
+      - ./:/work:ro
+      - circuits_build:/out
+    command: ["/usr/local/bin/publish-artifacts.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /out/.ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  prover:
+    build:
+      context: apps/prover
+    environment:
+      CIRCUIT_WASM: /circuits/Main_js/Main.wasm
+      WITNESS_JS:   /circuits/Main_js/generate_witness.js
+      ZKEY:         /circuits/Main_0000.zkey
+      VK_JSON:      /circuits/verification_key.json
+      SNARKJS:      snarkjs
+      NODE:         node
+      WORK_ROOT:    /srv/work
+      GARAGA_BIN:   garaga
+      WATCHFILES_FORCE_POLLING: "1"
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/prover
+          target: /srv
+          initial_sync: true
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+        - action: rebuild
+          path: ./apps/prover/requirements.txt
+    command:
+      [
+        "uvicorn","app:app",
+        "--host","0.0.0.0","--port","8000",
+        "--reload",
+        "--reload-dir","/srv",
+        "--reload-exclude","work/*"
+      ]
+    volumes:
+      - circuits_build:/circuits:ro
+    tmpfs:
+      - "/srv/work:rw,noexec,nosuid,nodev,size=1g"
+    ports: ["8000:8000"]
+    depends_on:
+      circuits:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .                      # ⬅ repo root
+      dockerfile: apps/web/Dockerfile # ⬅ still using the web Dockerfile
+    environment:
+      NEXT_PUBLIC_KATANA_RPC: http://katana:5050
+      NEXT_PUBLIC_PROVER_URL: http://prover:8000/prove
+      NEXT_PUBLIC_TORII_URL: http://127.0.0.1:8080   # Torii base (no /graphql needed with SDK)
+      NEXT_PUBLIC_WORLD_ADDRESS: "0x03decd7644551cb5b3f79031e663b4c3f124cc001ea5f21d33572fa98b18b5d1"
+      NEXT_PUBLIC_ACTIONS_ADDRESS: "0x00eaec51fd4735de22d26feb034b1f3c8076ba6045940ec21ac1157b48e771b2"
+      NEXT_PUBLIC_VERIFIER_ADDRESS: "0x2451c0127ac0a252ed33b29e786dbc5e0883232eb591749a05c4c7234c0001a"
+      FORK_BLOCK: "latest"
+    command: npm run dev -- --hostname 0.0.0.0 --port 3000
+
+    # For dev, mount the whole repo so changes in any workspace hot-reload.
+    volumes:
+      - ./:/app
+      # Keep node_modules and .next as named volumes so they don't get shadowed
+      - web_node_modules:/app/node_modules
+      - web_next:/app/apps/web/.next
+
+    ports:
+      - "3000:3000"
+    depends_on:
+      prover:
+        condition: service_started

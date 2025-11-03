@@ -1,0 +1,52 @@
+# Torii config for Chance Master
+
+# ----------------------------
+# Server / CORS
+# ----------------------------
+[server]
+# Bind + port
+host = "0.0.0.0"
+port = 8080
+
+# Allow your Next dev app (adjust if you use a different port or hostname)
+cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+# ----------------------------
+# Chain + World
+# ----------------------------
+[contracts]
+# Your deployed world address on Sepolia
+world_address = "0x03decd7644551cb5b3f79031e663b4c3f124cc001ea5f21d33572fa98b18b5d1"
+
+# Starknet RPC used for indexing. You already use Cartridge’s Sepolia endpoint.
+rpc = "https://api.cartridge.gg/x/starknet/sepolia"
+
+# ----------------------------
+# Relay (optional but useful for dojo.js real-time messaging)
+# Only set this if you actually have a relay running (e.g. Cartridge slot).
+# When configured, you can pass the same multiaddr to dojo.js init as relayUrl.
+# ----------------------------
+# [relay]
+# url = "/dns4/api.cartridge.gg/tcp/443/x-parity-wss/%2Fx%2Fyour-slot-deployment-name%2Ftorii%2Fwss"
+
+# ----------------------------
+# SQL: store historical snapshots for time-travel queries
+# ----------------------------
+[sql]
+# Keep historical rows for the models your UI needs to time-travel / audit.
+# (Use small set to keep DB lean in dev.)
+historical = [
+  "chance_master-Game",
+  "chance_master-GameBoard",
+  "chance_master-GameClock",
+  "chance_master-GameClaim",
+  "chance_master-Player",
+]
+
+# ----------------------------
+# Events (optional): index historical past events too
+# Equivalent to CLI flag: --events.historical
+# ----------------------------
+[events]
+historical = true
+

@@ -1,0 +1,30 @@
+[package]
+cairo-version = "2.12.2"
+name = "chance_master"
+version = "1.7.0"
+edition = "2024_07"
+
+[cairo]
+sierra-replace-ids = true
+
+[scripts]
+migrate        = "sozo build && sozo migrate"
+enqueue        = "sozo execute chance_master-actions enqueue --wait"
+dequeue        = "sozo execute chance_master-actions dequeue --wait"
+roll           = "sozo execute chance_master-actions roll --wait"
+get_game       = "sozo call chance_master-actions get_game"
+get_game_board = "sozo call chance_master-actions get_game_board"
+get_game_clock = "sozo call chance_master-actions get_game_clock"
+get_game_claim = "sozo call chance_master-actions get_game_claim"
+
+[dependencies]
+dojo = "1.7.0"
+dojo_cairo_macros = "1.7.0"
+starknet = "2.12.2"
+
+[[target.starknet-contract]]
+build-external-contracts = ["dojo::world::world_contract::world"]
+
+[dev-dependencies]
+cairo_test = "2.12.2"
+dojo_cairo_test = "1.7.0"

@@ -1,0 +1,26 @@
+# Node / Next
+node_modules/
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+apps/web/.next/
+apps/web/out/
+
+# Env
+.env*
+
+setup/
+
+# Scarb / Dojo builds
+packages/contracts-dojo/target/
+packages/verifier-groth16/target/
+packages/tools/
+
+# Misc
+.DS_Store
+
+.venv
+
+# ignore tools & build
+packages/tools/
+packages/circuit_verifier/target/

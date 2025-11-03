@@ -1,0 +1,13 @@
+[server]
+http_addr = "::"
+http_port = 5050
+timeout = 600
+
+[dev]
+dev    = true
+no_fee = true
+
+[forking]
+fork_provider = "https://starknet-sepolia.public.blastapi.io/rpc/v0_8"
+fork_block = { Num = 2678063 }
+

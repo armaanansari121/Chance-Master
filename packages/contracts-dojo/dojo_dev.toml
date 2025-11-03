@@ -1,0 +1,27 @@
+[world]
+name = "Dojo starter"
+description = "The official Dojo Starter guide, the quickest and most streamlined way to get your Dojo Autonomous World up and running. This guide will assist you with the initial setup, from cloning the repository to deploying your world."
+cover_uri = "file://assets/cover.png"
+icon_uri = "file://assets/icon.png"
+website = "https://github.com/dojoengine/dojo-starter"
+seed = "chance_master"
+
+[world.socials]
+x = "https://x.com/ohayo_dojo"
+discord = "https://discord.gg/FB2wR6uF"
+github = "https://github.com/dojoengine/dojo-starter"
+telegram = "https://t.me/dojoengine"
+
+[namespace]
+default = "chance_master"
+
+[env]
+world_address = "0x03decd7644551cb5b3f79031e663b4c3f124cc001ea5f21d33572fa98b18b5d1"
+rpc_url = "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_9/2V9R7yLz6m9l70OssFfY2"
+# Default account for katana with seed = 0
+account_address = "0x04e17DAa0dA0bcf7189A0E94c99382cDe1C933589654Db77e93C2fb7da90A346"
+private_key = "0x01a1a3da9ac51fbb514889ebc5c0dcdbf628e74daeda32dfeb1078202b9f19f3"
+# world_address = "0x06171ed98331e849d6084bf2b3e3186a7ddf35574dd68cab4691053ee8ab69d7"
+
+[writers]
+"chance_master" = ["chance_master-actions"]

@@ -1,0 +1,11 @@
+node_modules
+**/node_modules
+**/.next
+**/out
+packages/circuits/build
+packages/contracts-dojo/target
+packages/verifier-groth16/target
+setup
+.env
+.env.local
+

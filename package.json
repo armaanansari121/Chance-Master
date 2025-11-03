@@ -1,0 +1,36 @@
+{
+  "name": "chance_master",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22 <=24"
+  },
+  "private": true,
+  "scripts": {
+    "deploy:verifier": "tsx packages/tools/starknet/declareAndDeployGaragaVerifier.ts",
+    "call:verifier": "tsx packages/tools/starknet/callGaragaVerifier.ts"
+  },
+  "dependencies": {
+    "chess.js": "^1.4.0",
+    "circomlib": "^2.0.5",
+    "garaga": "^0.18.2",
+    "next": "15.5.6",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "snarkjs": "^0.7.5",
+    "starknet": "^7.6.4"
+  },
+  "overrides": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
