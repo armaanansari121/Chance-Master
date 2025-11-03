@@ -205,14 +205,20 @@ export default function Home() {
               style={{ willChange: 'transform, opacity' }}
             >
               <div className="rounded-xl bg-gradient-to-b from-white/5 to-transparent p-3">
-                <div className="aspect-[16/9] w-full rounded-lg bg-[linear-gradient(90deg,transparent_49%,rgba(255,255,255,0.05)_50%,transparent_51%),linear-gradient(transparent_49%,rgba(255,255,255,0.05)_50%,transparent_51%)] bg-[size:40px_40px]">
-                  <div className="flex h-full items-center justify-center text-white/50">
-                    <span className="rounded-md border border-white/10 bg-black/30 px-3 py-1 text-xs">
-                      Screenshot placeholder
-                    </span>
-                  </div>
+                <div className="relative aspect-[16/9] w-full">
+                  <Image
+                    src="/Screenshot.png"
+                    alt="Chance Master gameplay screenshot"
+                    fill
+                    className="rounded-lg object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 1000px"
+                    priority
+                  />
+                  {/* subtle border + sheen, matches theme */}
+                  <div className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-white/10" />
                 </div>
               </div>
+
             </motion.div>
           </div>
         </Section>

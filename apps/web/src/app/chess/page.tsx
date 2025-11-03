@@ -12,6 +12,7 @@ import { gqlFetch, getWsClient } from '../lib/torii-graphql';
 import { toFEN, type OnchainGame, type OnchainGameBoard } from '../lib/fen-from-bitboards';
 import { useActions } from '../lib/actions';
 import { HUDBar } from '../components/HUDBar';
+import { EndGameDialog } from '../components/EndGameDialog';
 
 // ---------- GraphQL ----------
 
@@ -781,6 +782,17 @@ export default function ChessPage() {
     ? String(latestGameRef.current.result)
     : null;
 
+  const ended = !!resultText;
+
+  useEffect(() => {
+    if (ended) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [ended]);
   return (
     <main className="min-h-screen">
       <div className="container mx-auto grid max-w-6xl grid-cols-1 gap-6 p-6 lg:grid-cols-[minmax(320px,640px)_1fr]">
@@ -1031,6 +1043,13 @@ export default function ChessPage() {
           </section>
         </aside>
       </div>
+      {ended && (
+        <EndGameDialog
+          result={resultText!}
+          onPlayAgain={() => r.replace('/match')}
+          onHome={() => r.replace('/')}
+        />
+      )}
     </main>
   );
 }
