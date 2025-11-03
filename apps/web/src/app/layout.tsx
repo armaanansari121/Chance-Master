@@ -9,9 +9,9 @@ export const metadata: Metadata = {
   title: 'Chance Master',
   description: 'Fully onchain chess with zk proofs on Starknet',
   icons: {
-    icon: [{ url: '../../public/Logo.png', type: 'image/png' }],        // favicon / tab icon
-    shortcut: ['../../public/Logo.png'],
-    apple: [{ url: '../../public/Logo.png' }],                          // iOS home screen icon (uses same file)
+    icon: [{ url: '/Logo.png', type: 'image/png' }],        // favicon / tab icon
+    shortcut: ['/Logo.png'],
+    apple: [{ url: '/Logo.png' }],                          // iOS home screen icon (uses same file)
   },
 };
 

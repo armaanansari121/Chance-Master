@@ -1,4 +1,3 @@
-// src/app/chess/page.tsx
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -12,6 +11,7 @@ import { useAccount } from '@starknet-react/core';
 import { gqlFetch, getWsClient } from '../lib/torii-graphql';
 import { toFEN, type OnchainGame, type OnchainGameBoard } from '../lib/fen-from-bitboards';
 import { useActions } from '../lib/actions';
+import { HUDBar } from '../components/HUDBar';
 
 // ---------- GraphQL ----------
 
@@ -129,7 +129,7 @@ function formatMs(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(s / 60);
   const sec = s % 60;
-  return `${String(m).padStart(2, '0')}:${String(sec, 10).padStart(2, '0')}`;
+  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
 const frameStyle: React.CSSProperties = {
@@ -201,6 +201,40 @@ const rollOnchainToUI = (t: Triple | null | undefined): [number, number, number]
   const conv = (v: number) => (v === 6 ? 0 : v + 1);
   return [conv(toNum(t?._0)), conv(toNum(t?._1)), conv(toNum(t?._2))];
 };
+
+// ----------------- NEW: UI helpers for address/timer strips -----------------
+
+const shortAddr = (a?: string | null) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : '—');
+
+function AddrChip({
+  label,
+  addr,
+  accent,
+}: {
+  label: string;
+  addr?: string | null;
+  accent: 'white' | 'black';
+}) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs text-white/80">
+      <span className={`h-1.5 w-1.5 rounded-full ${accent === 'white' ? 'bg-emerald-400/80' : 'bg-purple-400/80'}`} />
+      <span className="font-medium">{label}</span>
+      <span className="font-mono tabular-nums text-white/70">{shortAddr(addr)}</span>
+      <span className={`ml-1 rounded-sm ${accent === 'white' ? 'bg-emerald-400/10 text-emerald-300' : 'bg-purple-400/10 text-purple-300'} px-1.5 py-0.5 text-[10px]`}>
+        live
+      </span>
+    </div>
+  );
+}
+
+function ClockPill({ ms, accent }: { ms: number; accent: 'white' | 'black' }) {
+  const badge = accent === 'white' ? 'text-emerald-300 bg-emerald-500/10' : 'text-purple-300 bg-purple-500/10';
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs font-mono text-white/80">
+      <span className={`rounded px-1.5 py-0.5 ${badge}`}>{formatMs(ms)}</span>
+    </div>
+  );
+}
 
 // ---------- Component ----------
 
@@ -717,24 +751,25 @@ export default function ChessPage() {
     <main className="min-h-screen">
       <div className="container mx-auto grid max-w-6xl grid-cols-1 gap-6 p-6 lg:grid-cols-[minmax(320px,640px)_1fr]">
         <div className="rounded-2xl p-4" style={{ background: 'linear-gradient(180deg,rgba(17,27,34,.92),rgba(11,19,24,.92))' }}>
-          <div className="inset-x-0 top-0 z-20 flex items-center justify-between text-xs text-white/70">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className={`rounded px-2 py-0.5 bg-white/5 truncate ${oppAccent.text}`} title={oppCanon ?? ''}>
-                Opponent ({oppCanon ?? '—'})
-              </div>
-            </div>
-            <div className={`rounded px-2 py-0.5 bg-white/5 font-mono tabular-nums ${oppAccent.text} ${oppAccent.chipBg}`}>
-              {formatMs(topTimeMs)}
-            </div>
-          </div>
 
-          <div className="board-wrap themed-board glass-board relative" style={{ width: '100%', aspectRatio: '1 / 1' }}>
+          {/* Top bar (opponent) */}
+          <HUDBar
+            label="Opponent"
+            address={oppCanon}
+            timeMs={topTimeMs}
+            accent={boardOrientation === 'white' ? 'purple' : 'emerald'}
+          />
+
+          <div
+            className="board-wrap themed-board glass-board relative"
+            style={{ width: '100%', aspectRatio: '1 / 1' }}
+          >
             <Chessboard key={boardKey} options={options as any} />
             <div className="board-sheen" aria-hidden />
             <div className="board-reflections" aria-hidden />
 
             {(proving || guardLoading) && (
-              <div className="absolute inset-0 grid place-items-center rounded-2xl bg-black/40 backdrop-blur-sm z-30">
+              <div className="absolute inset-0 z-30 grid place-items-center rounded-2xl bg-black/40 backdrop-blur-sm">
                 <div className="rounded-md bg-white/90 px-3 py-2 text-sm text-black">
                   {guardLoading ? 'Loading player…' : 'Proving…'}
                 </div>
@@ -742,7 +777,7 @@ export default function ChessPage() {
             )}
 
             {drawPending && (
-              <div className="absolute inset-x-2 bottom-2 grid place-items-center">
+              <div className="pointer-events-none absolute inset-x-2 bottom-2 z-30 grid place-items-center">
                 <div className="rounded-md bg-white/10 px-3 py-2 text-xs text-white/90">
                   Draw offered — you may accept by offering a draw back.
                 </div>
@@ -750,16 +785,13 @@ export default function ChessPage() {
             )}
           </div>
 
-          <div className="inset-x-0 top-0 z-20 flex items-center justify-between text-xs text-white/70">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className={`rounded px-2 py-0.5 bg-white/5 text-emerald-400 truncate ${meAccent.text}`} title={meCanon ?? ''}>
-                You ({meCanon ?? '—'})
-              </div>
-            </div>
-            <div className={`rounded px-2 py-0.5 bg-white/5 text-emerald-400 font-mono tabular-nums ${meAccent.text} ${meAccent.chipBg}`}>
-              {formatMs(bottomTimeMs)}
-            </div>
-          </div>
+          {/* Bottom bar (you) */}
+          <HUDBar
+            label="You"
+            address={meCanon}
+            timeMs={bottomTimeMs}
+            accent={boardOrientation === 'white' ? 'emerald' : 'purple'}
+          />
         </div>
 
         <aside className="space-y-4 rounded-2xl p-4" style={{ background: 'linear-gradient(180deg,rgba(17,27,34,.92),rgba(11,19,24,.92))' }}>
@@ -885,3 +917,4 @@ function pieceName(t: 'p' | 'n' | 'b' | 'r' | 'q' | 'k') {
     case 'k': return 'king';
   }
 }
+
